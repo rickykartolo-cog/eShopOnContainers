@@ -219,3 +219,8 @@ FakesAssemblies/
 GeneratedArtifacts/
 _Pvt_Extensions/
 ModelManifest.xml
+
+# Test artifacts
+/test-results/
+/playwright-report/
+/coverage/
