@@ -1,0 +1,18 @@
+== COLUMNS ==
+dbo.__EFMigrationsHistory|MigrationId|nvarchar|300|0|0|0|0|
+dbo.__EFMigrationsHistory|ProductVersion|nvarchar|64|0|0|0|0|
+dbo.Subscriptions|Id|int|4|10|0|0|1|
+dbo.Subscriptions|Type|int|4|10|0|0|0|
+dbo.Subscriptions|Date|datetime2|8|27|7|0|0|
+dbo.Subscriptions|DestUrl|nvarchar|-1|0|0|1|0|
+dbo.Subscriptions|Token|nvarchar|-1|0|0|1|0|
+dbo.Subscriptions|UserId|nvarchar|-1|0|0|1|0|
+== PRIMARY KEYS AND UNIQUE CONSTRAINTS ==
+dbo.__EFMigrationsHistory|PK___EFMigrationsHistory|PRIMARY_KEY_CONSTRAINT|MigrationId|1
+dbo.Subscriptions|PK_Subscriptions|PRIMARY_KEY_CONSTRAINT|Id|1
+== INDEXES ==
+dbo.__EFMigrationsHistory|PK___EFMigrationsHistory|CLUSTERED|1|MigrationId|1|0
+dbo.Subscriptions|PK_Subscriptions|CLUSTERED|1|Id|1|0
+== FOREIGN KEYS ==
+== CHECK AND DEFAULT CONSTRAINTS ==
+== SEQUENCES (incl. HiLo) ==
