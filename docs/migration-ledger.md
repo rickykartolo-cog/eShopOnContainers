@@ -60,7 +60,7 @@ image back to the .NET image and `up -d` that one service — for example
 | Ordering.BackgroundTasks | `src/Services/Ordering/Ordering.BackgroundTasks` | `ordering-backgroundtasks` 5111:80 | event GracePeriodConfirmed (prod), golden in `contracts/events/` | none (behavioral: grace-period publication) | `eshop/ordering.backgroundtasks:linux-latest` | _none yet_ (retain until Ordering migrates) | contracts-frozen | `docker compose ... up -d --no-build ordering-backgroundtasks` |
 | Ordering.SignalrHub | `src/Services/Ordering/Ordering.SignalrHub` | `ordering-signalrhub` 5112:80 | No OpenAPI; realtime contract `/hub/notificationhub`, `UpdatedOrderState {OrderId, Status}`; consumes 6 order-status events; `contracts/health/ordering-signalrhub.*`; aud `orders.signalrhub` | none (add e2e realtime tests before protocol change) | `eshop/ordering.signalrhub:linux-latest` | _none yet_ (migrate last, gated with frontend) | contracts-frozen | `docker compose ... up -d --no-build ordering-signalrhub` |
 | Payment | `src/Services/Payment/Payment.API` | `payment-api` 5108:80 | No OpenAPI (no HTTP API); events OrderPaymentSucceeded/Failed (prod), OrderStatusChangedToStockConfirmed (cons); `contracts/health/payment.*` | none in baseline — author new tests from frozen events | `eshop/payment.api:linux-latest` | _none yet_ | contracts-frozen | `docker compose ... up -d --no-build payment-api` |
-| Webhooks | `src/Services/Webhooks/Webhooks.API` | `webhooks-api` 5113:80 | `contracts/openapi/webhooks.swagger.json`; events ProductPriceChanged/OrderStatusChangedToShipped/Paid (cons); `contracts/db/webhooks.sqlschema.txt`; `contracts/health/webhooks.*`; aud `webhooks` | none in baseline — author new HTTP tests from frozen OpenAPI | `eshop/webhooks.api:linux-latest` | _none yet_ | contracts-frozen | `docker compose ... up -d --no-build webhooks-api` |
+| Webhooks | `src/Services/Webhooks/Webhooks.API` | `webhooks-api` 5113:80 | `contracts/openapi/webhooks.swagger.json`; events ProductPriceChanged/OrderStatusChangedToShipped/Paid (cons); `contracts/db/webhooks.sqlschema.txt`; `contracts/health/webhooks.*`; aud `webhooks` | none in baseline — new suite in `src/python/webhooks_api/tests` (HTTP functional from frozen OpenAPI, event goldens, delivery contract, health/DB parity) | `eshop/webhooks.api:linux-latest` | `eshop/webhooks.api.python:linux-latest` (`src/python/webhooks_api`, built via `src/docker-compose-webhooks-python.override.yml`) | candidate-ready (Python FastAPI implementation + tests + CI gate in place; .NET image remains the default) | `docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --no-build webhooks-api` |
 
 ### Unchanged-by-this-plan components (tracked for completeness)
 
@@ -99,6 +99,19 @@ Catalog-specific jobs added with the Python candidate:
   Python container is held to the same frozen OpenAPI/health/DB-schema gates as
   the .NET service.
 
+Webhooks-specific jobs added with the Python candidate:
+
+- `webhooks-python-unit`: ruff lint plus the pytest suite under
+  `src/python/webhooks_api/tests` (new HTTP functional tests from the frozen
+  OpenAPI/observed controller behavior — auth, ownership, validation, grant-URL
+  flow, status codes; event-golden serialization and routing keys;
+  callback payload/token-header parity; duplicate-delivery contract; OpenAPI
+  golden equality; health golden shape; frozen SQL schema DDL parity).
+- `webhooks-python-contract-gate`: runs the existing `gate_service.sh webhooks`
+  with `EXTRA_COMPOSE_FILE=docker-compose-webhooks-python.override.yml`, so the
+  Python container is held to the same frozen OpenAPI/health/DB-schema gates as
+  the .NET service.
+
 ## Catalog cutover runbook (Python candidate)
 
 The Python implementation lives in `src/python/catalog_api` and reuses
@@ -126,4 +139,38 @@ Cutover = the same `up -d` layered command (the override swaps only the
 ```
 cd src
 docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --no-build catalog-api
+```
+
+## Webhooks cutover runbook (Python candidate)
+
+The Python implementation lives in `src/python/webhooks_api` and reuses
+`src/python/eshop_common`. Same compose service name (`webhooks-api`), port
+(5113:80 HTTP), environment variables (`ConnectionString`, `EventBusConnection`,
+`EventBusUserName`, `EventBusPassword`, `IdentityUrl`, `IdentityUrlExternal`),
+database (`Microsoft.eShopOnContainers.Services.WebhooksDb`), queue name
+(`Webhooks`) and event contracts. `WebhookClient` keeps working unchanged (same
+routes, 201/Location, grant-URL OPTIONS handshake, callback body and
+`X-eshop-whtoken` header).
+
+Shadow deploy (build + run the Python candidate in the full stack):
+
+```
+cd src
+docker compose -f docker-compose.yml -f docker-compose.override.yml \
+  -f docker-compose-webhooks-python.override.yml build webhooks-api
+docker compose -f docker-compose.yml -f docker-compose.override.yml \
+  -f docker-compose-webhooks-python.override.yml up -d
+```
+
+The Python service runs against the database created by the .NET
+`MigrateDbContext<WebhooksContext>` without destructive changes (it only
+creates the `Subscriptions` schema + EF migrations-history row when the
+database is empty, mirroring the EF migration).
+
+Cutover = the same `up -d` layered command (the override swaps only the
+`webhooks-api` image). One-step rollback to .NET:
+
+```
+cd src
+docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --no-build webhooks-api
 ```
