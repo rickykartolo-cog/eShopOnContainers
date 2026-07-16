@@ -1,0 +1,94 @@
+name: contract-gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  static-contracts:
+    name: proto + integration-event contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify frozen proto contracts
+        run: bash scripts/contracts/check_proto.sh | tee proto-report.txt
+
+      - name: Verify golden integration events and JSON Schemas
+        run: python3 scripts/contracts/check_events.py | tee events-report.txt
+
+      - name: Verify event JSON Schemas are regenerable
+        run: |
+          cp -r contracts/events /tmp/events-before
+          python3 scripts/contracts/generate_event_schemas.py contracts/events
+          diff -ru /tmp/events-before contracts/events
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-contract-reports
+          path: |
+            proto-report.txt
+            events-report.txt
+
+  service-contract-gate:
+    name: contract gate (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - basket
+          - catalog
+          - identity
+          - locations
+          - marketing
+          - ordering
+          - ordering-signalrhub
+          - payment
+          - webhooks
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run per-service contract gate
+        run: bash scripts/contracts/gate_service.sh ${{ matrix.service }} contract-reports/${{ matrix.service }}
+
+      - name: Upload human-readable diff reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-reports-${{ matrix.service }}
+          path: contract-reports/${{ matrix.service }}
+          if-no-files-found: ignore
+
+  signalrhub-realtime:
+    name: ordering-signalrhub realtime (Python + RabbitMQ)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run unit + mixed-stack realtime tests
+        working-directory: src/python/ordering_signalrhub
+        run: |
+          docker compose -f docker-compose-tests.yml up --build \
+            --abort-on-container-exit --exit-code-from ordering-signalrhub-tests
+
+  webspa-client:
+    name: WebSPA Jest (Socket.IO client)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install and test
+        working-directory: src/Web/WebSPA
+        run: |
+          npm ci
+          npx jest --ci

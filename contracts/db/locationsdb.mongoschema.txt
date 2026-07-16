@@ -1,0 +1,12 @@
+== COLLECTION: Locations ==
+index|Location_2dsphere|{"Location":"2dsphere"}
+index|_id_|{"_id":1}
+field|Code|string
+field|Description|string
+field|Latitude|number
+field|Location|object
+field|LocationId|number
+field|Longitude|number
+field|Parent_Id|null
+field|Polygon|object
+field|_id|objectId

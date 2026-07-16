@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OrderPaymentSucceededIntegrationEvent",
+  "description": "Frozen contract for OrderPaymentSucceededIntegrationEvent. RabbitMQ routing key: OrderPaymentSucceededIntegrationEvent (exchange eshop_event_bus); Azure Service Bus label: OrderPaymentSucceeded.",
+  "type": "object",
+  "properties": {
+    "OrderId": {
+      "type": "integer"
+    },
+    "Id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "CreationDate": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "OrderId",
+    "Id",
+    "CreationDate"
+  ],
+  "additionalProperties": false
+}

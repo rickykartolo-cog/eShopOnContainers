@@ -1,0 +1,1 @@
+{"status":"Healthy","totalDuration":"<duration>","entries":{"self":{"data":{},"duration":"<duration>","status":"Healthy"},"locations-mongodb-check":{"data":{},"duration":"<duration>","status":"Healthy"},"locations-rabbitmqbus-check":{"data":{},"duration":"<duration>","status":"Healthy"}}}

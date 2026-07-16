@@ -1,15 +1,19 @@
-﻿import { Injectable } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { SecurityService } from './security.service';
 import { ConfigurationService } from './configuration.service';
-import { HubConnection, HubConnectionBuilder, LogLevel, HttpTransportType } from '@microsoft/signalr';
+import { io, Socket } from 'socket.io-client';
 import { ToastrService } from 'ngx-toastr';
 import { Subject } from 'rxjs';
 
+// Realtime order-status notifications. The hub is now a Socket.IO server
+// (python ordering-signalrhub) served at the same /hub/notificationhub path,
+// authenticated with the access token in the connection query string, and it
+// emits the same 'UpdatedOrderState' message with { orderId, status }.
 @Injectable()
 export class SignalrService {
-    private _hubConnection: HubConnection;
+    private socket: Socket;
     private SignalrHubUrl: string = '';
-    private msgSignalrSource = new Subject();
+    private msgSignalrSource = new Subject<void>();
     msgReceived$ = this.msgSignalrSource.asObservable();
 
     constructor(
@@ -29,39 +33,35 @@ export class SignalrService {
     }
 
     public stop() {
-        this._hubConnection.stop();
+        if (this.socket) {
+            this.socket.disconnect();
+        }
     }
 
     private init() {
         if (this.securityService.IsAuthorized == true) {
             this.register();
-            this.stablishConnection();
             this.registerHandlers();
         }
     }
 
     private register() {
-        this._hubConnection = new HubConnectionBuilder()
-            .withUrl(this.SignalrHubUrl + '/hub/notificationhub', {
-                accessTokenFactory: () => this.securityService.GetToken()
-            })
-            .configureLogging(LogLevel.Information)
-            .withAutomaticReconnect()
-            .build();
-    }
-
-    private stablishConnection() {
-        this._hubConnection.start()
-            .then(() => {
-                console.log('Hub connection started')
-            })
-            .catch(() => {
-                console.log('Error while establishing connection')
-            });
+        this.socket = io(this.SignalrHubUrl, {
+            path: '/hub/notificationhub',
+            query: { access_token: this.securityService.GetToken() },
+            transports: ['websocket', 'polling'],
+            reconnection: true
+        });
+        this.socket.on('connect', () => {
+            console.log('Hub connection started');
+        });
+        this.socket.on('connect_error', () => {
+            console.log('Error while establishing connection');
+        });
     }
 
     private registerHandlers() {
-        this._hubConnection.on('UpdatedOrderState', (msg) => {
+        this.socket.on('UpdatedOrderState', (msg) => {
             console.log(`Order ${msg.orderId} updated to ${msg.status}`);
             this.toastr.success('Updated to status: ' + msg.status, 'Order Id: ' + msg.orderId);
             this.msgSignalrSource.next();
