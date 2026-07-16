@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UserLocationUpdatedIntegrationEvent",
+  "description": "Frozen contract for UserLocationUpdatedIntegrationEvent. RabbitMQ routing key: UserLocationUpdatedIntegrationEvent (exchange eshop_event_bus); Azure Service Bus label: UserLocationUpdated.",
+  "type": "object",
+  "properties": {
+    "UserId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "LocationList": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "LocationId": {
+            "type": "integer"
+          },
+          "Code": {
+            "type": "string"
+          },
+          "Description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "LocationId",
+          "Code",
+          "Description"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "Id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "CreationDate": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "UserId",
+    "LocationList",
+    "Id",
+    "CreationDate"
+  ],
+  "additionalProperties": false
+}

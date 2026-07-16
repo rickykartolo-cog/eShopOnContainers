@@ -1,0 +1,16 @@
+# Swap the locations-api implementation to the Python (FastAPI) candidate while
+# keeping the same Compose service name, ports, dependencies, and environment
+# variables. Layer on top of the standard files:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml \
+#     -f docker-compose-locations-python.override.yml up -d locations-api
+#
+# Rollback (one step): re-run the same command WITHOUT this file.
+version: '3.4'
+
+services:
+  locations-api:
+    image: ${REGISTRY:-eshop}/locations.api.python:${PLATFORM:-linux}-${TAG:-latest}
+    build:
+      context: .
+      dockerfile: python/locations_api/Dockerfile

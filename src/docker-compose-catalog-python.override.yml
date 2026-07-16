@@ -1,0 +1,17 @@
+# Swaps the catalog-api container for the Python (FastAPI) implementation while
+# keeping the frozen compose contract: same service name, ports (5101:80,
+# 9101:81), environment variables, and health URLs. The .NET image remains the
+# default in docker-compose.yml; layer this file to shadow-deploy or cut over:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml \
+#     -f docker-compose-catalog-python.override.yml up -d catalog-api
+#
+# Rollback (one step): re-run the same command WITHOUT this file.
+version: '3.4'
+
+services:
+  catalog-api:
+    image: ${REGISTRY:-eshop}/catalog.api.python:${PLATFORM:-linux}-${TAG:-latest}
+    build:
+      context: .
+      dockerfile: python/catalog_api/Dockerfile

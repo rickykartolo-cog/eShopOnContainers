@@ -1,0 +1,180 @@
+name: contract-gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  static-contracts:
+    name: proto + integration-event contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify frozen proto contracts
+        run: bash scripts/contracts/check_proto.sh | tee proto-report.txt
+
+      - name: Verify golden integration events and JSON Schemas
+        run: python3 scripts/contracts/check_events.py | tee events-report.txt
+
+      - name: Verify event JSON Schemas are regenerable
+        run: |
+          cp -r contracts/events /tmp/events-before
+          python3 scripts/contracts/generate_event_schemas.py contracts/events
+          diff -ru /tmp/events-before contracts/events
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-contract-reports
+          path: |
+            proto-report.txt
+            events-report.txt
+
+  service-contract-gate:
+    name: contract gate (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - basket
+          - catalog
+          - identity
+          - locations
+          - marketing
+          - ordering
+          - ordering-signalrhub
+          - payment
+          - webhooks
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run per-service contract gate
+        run: bash scripts/contracts/gate_service.sh ${{ matrix.service }} contract-reports/${{ matrix.service }}
+
+      - name: Upload human-readable diff reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-reports-${{ matrix.service }}
+          path: contract-reports/${{ matrix.service }}
+          if-no-files-found: ignore
+
+  catalog-python-unit:
+    name: catalog (python) lint + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e src/python/eshop_common -e 'src/python/catalog_api[dev]'
+
+      - name: Lint (ruff)
+        run: ruff check src/python/catalog_api
+
+      - name: Unit + contract tests
+        run: |
+          python -m pytest src/python/catalog_api/tests -v \
+            --junitxml=catalog-python-tests.xml | tee catalog-python-tests.txt
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalog-python-test-reports
+          path: |
+            catalog-python-tests.xml
+            catalog-python-tests.txt
+
+  locations-python-unit:
+    name: locations (python) lint + tests
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo
+        ports:
+          - 27017:27017
+      rabbitmq:
+        image: rabbitmq:3-management-alpine
+        ports:
+          - 5672:5672
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e src/python/eshop_common -e 'src/python/locations_api[dev]'
+
+      - name: Lint (ruff)
+        run: ruff check src/python/locations_api
+
+      - name: Unit + contract tests (incl. Mongo parity + RabbitMQ mixed-stack)
+        env:
+          TEST_MONGO_URL: mongodb://127.0.0.1:27017
+          TEST_RABBITMQ_HOST: 127.0.0.1
+        run: |
+          python -m pytest src/python/locations_api/tests -v \
+            --junitxml=locations-python-tests.xml | tee locations-python-tests.txt
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: locations-python-test-reports
+          path: |
+            locations-python-tests.xml
+            locations-python-tests.txt
+
+  catalog-python-contract-gate:
+    name: contract gate (catalog, python candidate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run catalog contract gate against the Python implementation
+        env:
+          EXTRA_COMPOSE_FILE: docker-compose-catalog-python.override.yml
+        run: bash scripts/contracts/gate_service.sh catalog contract-reports/catalog-python
+
+      - name: Upload human-readable diff reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-reports-catalog-python
+          path: contract-reports/catalog-python
+          if-no-files-found: ignore
+
+  locations-python-contract-gate:
+    name: contract gate (locations, python candidate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run locations contract gate against the Python implementation
+        env:
+          EXTRA_COMPOSE_FILE: docker-compose-locations-python.override.yml
+        run: bash scripts/contracts/gate_service.sh locations contract-reports/locations-python
+
+      - name: Upload human-readable diff reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-reports-locations-python
+          path: contract-reports/locations-python
+          if-no-files-found: ignore

@@ -1,0 +1,3 @@
+143650fada70d31e592be188fe3a7a21249e6d81239e05c515f62df8e838465f  src/Services/Basket/Basket.API/Proto/basket.proto
+a256eb98b4b7d9fccdf49b92d21b5ae4a470a279c1aa56455a050f8280e6951a  src/Services/Catalog/Catalog.API/Proto/catalog.proto
+2a462564928507367a0777ec4da103107f03e2448a3e371dc2562ca16804cf8f  src/Services/Ordering/Ordering.API/Proto/ordering.proto
