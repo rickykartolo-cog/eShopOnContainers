@@ -24,7 +24,7 @@ export class BasketService {
     };
 
     //observable that is fired when the basket is dropped
-    private basketDropedSource = new Subject();
+    private basketDropedSource = new Subject<void>();
     basketDroped$ = this.basketDropedSource.asObservable();
 
     constructor(private service: DataService, private authService: SecurityService, private basketEvents: BasketWrapperService, private router: Router, private configurationService: ConfigurationService, private storageService: StorageService) {

@@ -2,7 +2,7 @@ import { NgModule, ModuleWithProviders } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { HttpClientModule, HttpClientJsonpModule } from '@angular/common/http';
+import { provideHttpClient, withInterceptorsFromDi, withJsonpSupport } from '@angular/common/http';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 
 // Services
@@ -23,18 +23,7 @@ import { PageNotFoundComponent } from './components/page-not-found/page-not-foun
 // Pipes:
 import { UppercasePipe } from './pipes/uppercase.pipe';
 
-@NgModule({
-    imports: [
-        CommonModule,
-        FormsModule,
-        ReactiveFormsModule,
-        RouterModule,
-        NgbModule,
-        // No need to export as these modules don't expose any components/directive etc'
-        HttpClientModule,
-        HttpClientJsonpModule
-    ],
-    declarations: [
+@NgModule({ declarations: [
         Pager,
         Header,
         Identity,
@@ -54,8 +43,11 @@ import { UppercasePipe } from './pipes/uppercase.pipe';
         Identity,
         PageNotFoundComponent,
         UppercasePipe
-    ]
-})
+    ], imports: [CommonModule,
+        FormsModule,
+        ReactiveFormsModule,
+        RouterModule,
+        NgbModule], providers: [provideHttpClient(withInterceptorsFromDi(), withJsonpSupport())] })
 export class SharedModule {
     static forRoot(): ModuleWithProviders<SharedModule> {
         return {

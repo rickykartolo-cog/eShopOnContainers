@@ -1,3 +1,5 @@
+@use 'sass:math';
+
 @import '../../../variables';
 
 .esh-pager {
@@ -30,7 +32,7 @@
         }
 
         @media screen and (max-width: $media-screen-m) {
-            margin: 0 $margin / 2;
+            margin: 0 math.div($margin, 2);
         }
     }
 }
