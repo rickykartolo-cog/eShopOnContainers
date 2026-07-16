@@ -61,18 +61,18 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
-            "browserTarget": "WebSPA:build"
+            "buildTarget": "WebSPA:build"
           },
           "configurations": {
             "production": {
-              "browserTarget": "WebSPA:build:production"
+              "buildTarget": "WebSPA:build:production"
             }
           }
         },
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "WebSPA:build"
+            "buildTarget": "WebSPA:build"
           }
         },
         "test": {
