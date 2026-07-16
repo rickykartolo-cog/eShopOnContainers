@@ -161,7 +161,7 @@ services:
       context: .
       dockerfile: Web/WebSPA/Dockerfile
       args:
-        NODE_IMAGE: ${NODE_IMAGE:-node:10.13}
+        NODE_IMAGE: ${NODE_IMAGE:-node:20-bullseye}
 #    depends_on:
 #      - webshoppingagg
 #      - webshoppingapigw

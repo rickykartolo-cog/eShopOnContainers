@@ -3,12 +3,12 @@
   "compilerOptions": {
     "outDir": "./dist/out-tsc",
     "baseUrl": "src",
+    "esModuleInterop": true,
     "sourceMap": true,
     "declaration": false,
     "moduleResolution": "node",
-    "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "target": "es5",
+    "target": "ES2022",
     "typeRoots": [
       "node_modules/@types"
     ],
@@ -16,9 +16,7 @@
       "es2016",
       "dom"
     ],
-    "module": "es2015"
-  },
-  "angularCompilerOptions": {
-    "enableIvy": false
-  } 
+    "module": "es2020",
+    "useDefineForClassFields": false
+  }
 }

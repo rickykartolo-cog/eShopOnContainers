@@ -19,4 +19,4 @@ export const routes: Routes = [
     { path: 'campaigns/:id', component: CampaignsDetailComponent }
 ];
 
-export const routing = RouterModule.forRoot(routes);
+export const routing = RouterModule.forRoot(routes, {});

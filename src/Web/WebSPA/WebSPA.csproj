@@ -70,7 +70,6 @@
     <None Remove="Client\modules\shared\services\storage.service.ts" />
     <None Remove="Client\modules\shared\shared.module.ts" />
     <None Remove="Client\polyfills.ts" />
-    <None Remove="Client\test.ts" />
     <None Remove="Client\typings.d.ts" />
     <Content Include="Setup\images.zip">
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
@@ -160,7 +159,6 @@
     <TypeScriptCompile Include="Client\modules\shared\services\storage.service.ts" />
     <TypeScriptCompile Include="Client\modules\shared\shared.module.ts" />
     <TypeScriptCompile Include="Client\polyfills.ts" />
-    <TypeScriptCompile Include="Client\test.ts" />
     <TypeScriptCompile Include="Client\typings.d.ts" />
   </ItemGroup>
 
