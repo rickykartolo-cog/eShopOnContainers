@@ -361,7 +361,11 @@ async def delete_product(request: Request, item_id: str) -> Response:
     return Response(status_code=204)
 
 
+# ASP.NET ignores trailing slashes and the PicBaseUrl clients use ".../pic/";
+# serve it directly rather than letting FastAPI 307-redirect to the internal
+# container hostname, which is unreachable from behind the gateway.
 @router.get("/api/v1/catalog/items/{catalog_item_id}/pic")
+@router.get("/api/v1/catalog/items/{catalog_item_id}/pic/", include_in_schema=False)
 async def get_image(request: Request, catalog_item_id: str) -> Response:
     try:
         parsed = int(catalog_item_id)
