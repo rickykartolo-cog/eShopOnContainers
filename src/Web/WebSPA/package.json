@@ -27,15 +27,15 @@
     "lint:ts": "tslint -c tslint.json Client/**/*.ts"
   },
   "dependencies": {
-    "@angular/animations": "12.2.17",
-    "@angular/common": "12.2.17",
-    "@angular/compiler": "12.2.17",
-    "@angular/core": "12.2.17",
-    "@angular/forms": "12.2.17",
-    "@angular/platform-browser": "12.2.17",
-    "@angular/platform-browser-dynamic": "12.2.17",
-    "@angular/platform-server": "12.2.17",
-    "@angular/router": "12.2.17",
+    "@angular/animations": "13.4.0",
+    "@angular/common": "13.4.0",
+    "@angular/compiler": "13.4.0",
+    "@angular/core": "13.4.0",
+    "@angular/forms": "13.4.0",
+    "@angular/platform-browser": "13.4.0",
+    "@angular/platform-browser-dynamic": "13.4.0",
+    "@angular/platform-server": "13.4.0",
+    "@angular/router": "13.4.0",
     "@microsoft/signalr": "3.0.1",
     "@ng-bootstrap/ng-bootstrap": "^10.0.0",
     "@popperjs/core": "2.0.0",
@@ -58,10 +58,10 @@
     "zone.js": "~0.11.4"
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "~12.2.18",
-    "@angular/cli": "12.2.18",
-    "@angular/compiler-cli": "12.2.17",
-    "@angular/language-service": "12.2.17",
+    "@angular-devkit/build-angular": "~13.3.11",
+    "@angular/cli": "13.3.11",
+    "@angular/compiler-cli": "13.4.0",
+    "@angular/language-service": "13.4.0",
     "@types/core-js": "2.5.0",
     "@types/hammerjs": "2.0.35",
     "@types/jasmine": "~3.6.0",
@@ -88,7 +88,7 @@
     "ts-node": "~7.0.1",
     "tslint": "~6.1.0",
     "typedoc": "^0.19.2",
-    "typescript": "4.3.5",
+    "typescript": "4.6.4",
     "url-loader": "1.1.1",
     "webpack": "^4.42.1"
   }
