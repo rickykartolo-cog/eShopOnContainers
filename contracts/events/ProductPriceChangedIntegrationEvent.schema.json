@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProductPriceChangedIntegrationEvent",
+  "description": "Frozen contract for ProductPriceChangedIntegrationEvent. RabbitMQ routing key: ProductPriceChangedIntegrationEvent (exchange eshop_event_bus); Azure Service Bus label: ProductPriceChanged.",
+  "type": "object",
+  "properties": {
+    "ProductId": {
+      "type": "integer"
+    },
+    "NewPrice": {
+      "type": "number"
+    },
+    "OldPrice": {
+      "type": "number"
+    },
+    "Id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "CreationDate": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "ProductId",
+    "NewPrice",
+    "OldPrice",
+    "Id",
+    "CreationDate"
+  ],
+  "additionalProperties": false
+}

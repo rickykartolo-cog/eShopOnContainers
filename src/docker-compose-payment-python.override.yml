@@ -1,0 +1,18 @@
+# Swaps the payment-api container for the Python (FastAPI) implementation while
+# keeping the frozen compose contract: same service name, port (5108:80),
+# environment variables (including the PaymentSucceeded simulation toggle), and
+# health URLs. The .NET image remains the default in docker-compose.yml; layer
+# this file to shadow-deploy or cut over:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml \
+#     -f docker-compose-payment-python.override.yml up -d payment-api
+#
+# Rollback (one step): re-run the same command WITHOUT this file.
+version: '3.4'
+
+services:
+  payment-api:
+    image: ${REGISTRY:-eshop}/payment.api.python:${PLATFORM:-linux}-${TAG:-latest}
+    build:
+      context: .
+      dockerfile: python/payment_api/Dockerfile
