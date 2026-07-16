@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OrderStatusChangedToStockConfirmedIntegrationEvent",
+  "description": "Frozen contract for OrderStatusChangedToStockConfirmedIntegrationEvent. RabbitMQ routing key: OrderStatusChangedToStockConfirmedIntegrationEvent (exchange eshop_event_bus); Azure Service Bus label: OrderStatusChangedToStockConfirmed.",
+  "type": "object",
+  "properties": {
+    "OrderId": {
+      "type": "integer"
+    },
+    "OrderStatus": {
+      "type": "string"
+    },
+    "BuyerName": {
+      "type": "string"
+    },
+    "Id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "CreationDate": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "OrderId",
+    "OrderStatus",
+    "BuyerName",
+    "Id",
+    "CreationDate"
+  ],
+  "additionalProperties": false
+}
