@@ -1,0 +1,48 @@
+# External OIDC Identity Provider (Keycloak 26.x) — additive overlay.
+#
+# This file adds a Keycloak service without touching any existing service,
+# port, or environment-variable interface. IdentityServer4 (identity-api)
+# keeps issuing tokens for all current clients; Keycloak runs side by side
+# until clients are migrated in later slices.
+#
+# Usage (local dev):
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.keycloak.yml up -d keycloak
+# or standalone:
+#   docker compose -f docker-compose.keycloak.yml up -d
+#
+# Secrets: set KEYCLOAK_ADMIN_PASSWORD (required) and the client secrets in
+# a local .env file (see Services/Identity/Keycloak/.env.sample). Never
+# commit real secrets.
+
+version: '3.4'
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3
+    command: ["start-dev", "--import-realm"]
+    environment:
+      - KC_BOOTSTRAP_ADMIN_USERNAME=${KEYCLOAK_ADMIN_USERNAME:-admin}
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD in your .env}
+      - KC_HTTP_ENABLED=true
+      - KC_HOSTNAME_STRICT=false
+      - KC_HEALTH_ENABLED=true
+      # Placeholders referenced by realm/eshop-realm.json at import time.
+      - ESHOP_SPA_URL=${ESHOP_SPA_URL:-http://${ESHOP_EXTERNAL_DNS_NAME_OR_IP:-localhost}:5104}
+      - ESHOP_MVC_URL=${ESHOP_MVC_URL:-http://${ESHOP_EXTERNAL_DNS_NAME_OR_IP:-localhost}:5100}
+      - ESHOP_XAMARIN_CALLBACK=${ESHOP_XAMARIN_CALLBACK:-http://${ESHOP_EXTERNAL_DNS_NAME_OR_IP:-localhost}:5105/xamarincallback}
+      - ESHOP_WEBHOOKS_WEB_URL=${ESHOP_WEBHOOKS_WEB_URL:-http://${ESHOP_EXTERNAL_DNS_NAME_OR_IP:-localhost}:5114}
+      - ESHOP_LOCATIONS_API_URL=${ESHOP_LOCATIONS_API_URL:-http://${ESHOP_EXTERNAL_DNS_NAME_OR_IP:-localhost}:5109}
+      - ESHOP_MARKETING_API_URL=${ESHOP_MARKETING_API_URL:-http://${ESHOP_EXTERNAL_DNS_NAME_OR_IP:-localhost}:5110}
+      - ESHOP_BASKET_API_URL=${ESHOP_BASKET_API_URL:-http://${ESHOP_EXTERNAL_DNS_NAME_OR_IP:-localhost}:5103}
+      - ESHOP_ORDERING_API_URL=${ESHOP_ORDERING_API_URL:-http://${ESHOP_EXTERNAL_DNS_NAME_OR_IP:-localhost}:5102}
+      - ESHOP_MOBILESHOPPINGAGG_URL=${ESHOP_MOBILESHOPPINGAGG_URL:-http://${ESHOP_EXTERNAL_DNS_NAME_OR_IP:-localhost}:5120}
+      - ESHOP_WEBSHOPPINGAGG_URL=${ESHOP_WEBSHOPPINGAGG_URL:-http://${ESHOP_EXTERNAL_DNS_NAME_OR_IP:-localhost}:5121}
+      - ESHOP_WEBHOOKS_API_URL=${ESHOP_WEBHOOKS_API_URL:-http://${ESHOP_EXTERNAL_DNS_NAME_OR_IP:-localhost}:5113}
+      - ESHOP_KEYCLOAK_XAMARIN_CLIENT_SECRET=${ESHOP_KEYCLOAK_XAMARIN_CLIENT_SECRET:?set in .env}
+      - ESHOP_KEYCLOAK_MVC_CLIENT_SECRET=${ESHOP_KEYCLOAK_MVC_CLIENT_SECRET:?set in .env}
+      - ESHOP_KEYCLOAK_MVCTEST_CLIENT_SECRET=${ESHOP_KEYCLOAK_MVCTEST_CLIENT_SECRET:?set in .env}
+      - ESHOP_KEYCLOAK_WEBHOOKSCLIENT_CLIENT_SECRET=${ESHOP_KEYCLOAK_WEBHOOKSCLIENT_CLIENT_SECRET:?set in .env}
+    volumes:
+      - ./Services/Identity/Keycloak/realm/eshop-realm.json:/opt/keycloak/data/import/eshop-realm.json:ro
+    ports:
+      - "5106:8080"
