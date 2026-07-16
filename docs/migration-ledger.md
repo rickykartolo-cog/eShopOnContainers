@@ -59,7 +59,7 @@ image back to the .NET image and `up -d` that one service — for example
 | Ordering.API | `src/Services/Ordering/Ordering.API` | `ordering-api` 5102:80, 9102:81 | `contracts/openapi/ordering.swagger.json`; `contracts/proto/ordering.proto`; events: OrderStarted + 6 status events (prod), UserCheckoutAccepted/GracePeriodConfirmed/OrderStockConfirmed/Rejected/OrderPaymentSucceeded/Failed (cons); `contracts/db/ordering.sqlschema.txt` (schema `ordering`, HiLo `ordering.orderseq`/`buyerseq`/`paymentseq`, dbo `orderitemseq`, owned `Address_*`); `contracts/health/ordering.*`; aud `orders` | `Ordering.FunctionalTests` (`OrderingScenarioBase`), `Ordering.UnitTests`; app scenarios | `eshop/ordering.api:linux-latest` | _none yet_ | contracts-frozen (migrate late) | `docker compose ... up -d --no-build ordering-api` |
 | Ordering.BackgroundTasks | `src/Services/Ordering/Ordering.BackgroundTasks` | `ordering-backgroundtasks` 5111:80 | event GracePeriodConfirmed (prod), golden in `contracts/events/` | none (behavioral: grace-period publication) | `eshop/ordering.backgroundtasks:linux-latest` | _none yet_ (retain until Ordering migrates) | contracts-frozen | `docker compose ... up -d --no-build ordering-backgroundtasks` |
 | Ordering.SignalrHub | `src/Services/Ordering/Ordering.SignalrHub` | `ordering-signalrhub` 5112:80 | No OpenAPI; realtime contract `/hub/notificationhub`, `UpdatedOrderState {OrderId, Status}`; consumes 6 order-status events; `contracts/health/ordering-signalrhub.*`; aud `orders.signalrhub` | none (add e2e realtime tests before protocol change) | `eshop/ordering.signalrhub:linux-latest` | _none yet_ (migrate last, gated with frontend) | contracts-frozen | `docker compose ... up -d --no-build ordering-signalrhub` |
-| Payment | `src/Services/Payment/Payment.API` | `payment-api` 5108:80 | No OpenAPI (no HTTP API); events OrderPaymentSucceeded/Failed (prod), OrderStatusChangedToStockConfirmed (cons); `contracts/health/payment.*` | none in baseline — author new tests from frozen events | `eshop/payment.api:linux-latest` | _none yet_ | contracts-frozen | `docker compose ... up -d --no-build payment-api` |
+| Payment | `src/Services/Payment/Payment.API` | `payment-api` 5108:80 | No OpenAPI (no HTTP API); events OrderPaymentSucceeded/Failed (prod), OrderStatusChangedToStockConfirmed (cons); `contracts/health/payment.*` | authored new tests from frozen events: `src/python/payment_api/tests` (event goldens, simulated-decision behavior, duplicate delivery, mixed-stack RabbitMQ, health goldens) | `eshop/payment.api:linux-latest` | `eshop/payment.api.python:linux-latest` (`src/python/payment_api`, built via `src/docker-compose-payment-python.override.yml`) | candidate-ready (Python FastAPI implementation + tests + CI gate in place; .NET image remains the default) | `docker compose ... up -d --no-build payment-api` |
 | Webhooks | `src/Services/Webhooks/Webhooks.API` | `webhooks-api` 5113:80 | `contracts/openapi/webhooks.swagger.json`; events ProductPriceChanged/OrderStatusChangedToShipped/Paid (cons); `contracts/db/webhooks.sqlschema.txt`; `contracts/health/webhooks.*`; aud `webhooks` | none in baseline — author new HTTP tests from frozen OpenAPI | `eshop/webhooks.api:linux-latest` | _none yet_ | contracts-frozen | `docker compose ... up -d --no-build webhooks-api` |
 
 ### Unchanged-by-this-plan components (tracked for completeness)
@@ -99,6 +99,19 @@ Catalog-specific jobs added with the Python candidate:
   Python container is held to the same frozen OpenAPI/health/DB-schema gates as
   the .NET service.
 
+Payment-specific jobs added with the Python candidate:
+
+- `payment-python-unit`: ruff lint plus the pytest suite under
+  `src/python/payment_api/tests` (event-golden serialization, simulated payment
+  decision behavior incl. the `PaymentSucceeded` toggle and its `true` default,
+  duplicate-delivery idempotency, health golden shape, and mixed-stack
+  producer/consumer tests against a real `rabbitmq:3-management-alpine` service
+  container).
+- `payment-python-contract-gate`: runs the existing `gate_service.sh payment`
+  with `EXTRA_COMPOSE_FILE=docker-compose-payment-python.override.yml`, so the
+  Python container is held to the same frozen health-golden gates as the .NET
+  service.
+
 ## Catalog cutover runbook (Python candidate)
 
 The Python implementation lives in `src/python/catalog_api` and reuses
@@ -126,4 +139,39 @@ Cutover = the same `up -d` layered command (the override swaps only the
 ```
 cd src
 docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --no-build catalog-api
+```
+
+## Payment cutover runbook (Python candidate)
+
+The Python implementation lives in `src/python/payment_api` and reuses
+`src/python/eshop_common`. Same compose service name (`payment-api`), port
+(5108:80 HTTP, no gRPC), environment variables (including the
+`PaymentSucceeded` simulation toggle, default `true` as in appsettings.json),
+health URLs (`/hc`, `/liveness`), and event contracts (consume
+`OrderStatusChangedToStockConfirmedIntegrationEvent`; publish
+`OrderPaymentSucceededIntegrationEvent` / `OrderPaymentFailedIntegrationEvent`
+on the `eshop_event_bus` direct exchange with routing key = class name).
+
+Payment is stateless (no database). Beyond the .NET behavior, the Python
+consumer keeps a bounded in-process event-`Id` inbox so redelivery of the same
+event publishes no additional payment event; Ordering's monotonic
+`SetPaymentStatus` transition remains the systemic safety net either way. The
+external event contract is unchanged.
+
+Shadow deploy (build + run the Python candidate in the full stack):
+
+```
+cd src
+docker compose -f docker-compose.yml -f docker-compose.override.yml \
+  -f docker-compose-payment-python.override.yml build payment-api
+docker compose -f docker-compose.yml -f docker-compose.override.yml \
+  -f docker-compose-payment-python.override.yml up -d
+```
+
+Cutover = the same `up -d` layered command (the override swaps only the
+`payment-api` image). One-step rollback to .NET:
+
+```
+cd src
+docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --no-build payment-api
 ```
