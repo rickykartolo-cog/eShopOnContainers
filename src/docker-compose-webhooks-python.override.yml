@@ -1,0 +1,17 @@
+# Swaps the webhooks-api container for the Python (FastAPI) implementation while
+# keeping the frozen compose contract: same service name, port (5113:80),
+# environment variables, and health URLs. The .NET image remains the default in
+# docker-compose.yml; layer this file to shadow-deploy or cut over:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml \
+#     -f docker-compose-webhooks-python.override.yml up -d webhooks-api
+#
+# Rollback (one step): re-run the same command WITHOUT this file.
+version: '3.4'
+
+services:
+  webhooks-api:
+    image: ${REGISTRY:-eshop}/webhooks.api.python:${PLATFORM:-linux}-${TAG:-latest}
+    build:
+      context: .
+      dockerfile: python/webhooks_api/Dockerfile

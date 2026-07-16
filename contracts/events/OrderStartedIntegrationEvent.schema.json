@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OrderStartedIntegrationEvent",
+  "description": "Frozen contract for OrderStartedIntegrationEvent. RabbitMQ routing key: OrderStartedIntegrationEvent (exchange eshop_event_bus); Azure Service Bus label: OrderStarted.",
+  "type": "object",
+  "properties": {
+    "UserId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "Id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "CreationDate": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "UserId",
+    "Id",
+    "CreationDate"
+  ],
+  "additionalProperties": false
+}
