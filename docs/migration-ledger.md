@@ -52,7 +52,7 @@ image back to the .NET image and `up -d` that one service — for example
 | Service | Owner path | Compose name / ports | Contract snapshots | Test suites | Current image | Replacement image | Cutover status | Rollback command |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Basket | `src/Services/Basket/Basket.API` | `basket-api` 5103:80, 9103:81 | `contracts/openapi/basket.swagger.json`; `contracts/proto/basket.proto`; events: UserCheckoutAccepted (prod), ProductPriceChanged, OrderStarted (cons); `contracts/health/basket.*`; `contracts/auth` (aud `basket`) | `Basket.FunctionalTests`, `Basket.UnitTests` under `src/Services/Basket`; app scenarios in `src/Tests/Services/Application.FunctionalTests` | `eshop/basket.api:linux-latest` | _none yet_ | contracts-frozen | `docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --no-build basket-api` |
-| Catalog | `src/Services/Catalog/Catalog.API` | `catalog-api` 5101:80, 9101:81 | `contracts/openapi/catalog.swagger.json`; `contracts/proto/catalog.proto`; events: ProductPriceChanged, OrderStockConfirmed/Rejected (prod), OrderStatusChangedToAwaitingValidation/Paid (cons); `contracts/db/catalog.sqlschema.txt` (HiLo `catalog_hilo`, `catalog_brand_hilo`, `catalog_type_hilo`); `contracts/health/catalog.*`; anonymous (no JWT) | `Catalog.FunctionalTests`, `Catalog.UnitTests`; app scenarios | `eshop/catalog.api:linux-latest` | _none yet_ | contracts-frozen (migrate first) | `docker compose ... up -d --no-build catalog-api` |
+| Catalog | `src/Services/Catalog/Catalog.API` | `catalog-api` 5101:80, 9101:81 | `contracts/openapi/catalog.swagger.json`; `contracts/proto/catalog.proto`; events: ProductPriceChanged, OrderStockConfirmed/Rejected (prod), OrderStatusChangedToAwaitingValidation/Paid (cons); `contracts/db/catalog.sqlschema.txt` (HiLo `catalog_hilo`, `catalog_brand_hilo`, `catalog_type_hilo`); `contracts/health/catalog.*`; anonymous (no JWT) | `Catalog.FunctionalTests`, `Catalog.UnitTests`; app scenarios | `eshop/catalog.api:linux-latest` | `eshop/catalog.api.python:linux-latest` (`src/python/catalog_api`, built via `src/docker-compose-catalog-python.override.yml`) | candidate-ready (Python FastAPI implementation + tests + CI gate in place; .NET image remains the default) | `docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --no-build catalog-api` |
 | Identity | `src/Services/Identity/Identity.API` | `identity-api` 5105:80 | No OpenAPI (404 by design); `contracts/db/identity.sqlschema.txt`; `contracts/health/identity.*`; clients/scopes in `contracts/auth/auth-requirements.md` | none in baseline; manual login flows + future IdP migration reconciliation tests | `eshop/identity.api:linux-latest` | External OIDC IdP (Keycloak 26.x preferred — decision locked, no Python rewrite) | contracts-frozen | `docker compose ... up -d --no-build identity-api` |
 | Location | `src/Services/Location/Locations.API` | `locations-api` 5109:80 | `contracts/openapi/locations.swagger.json`; event UserLocationUpdated (prod); `contracts/db/locationsdb.mongoschema.txt` (incl. `2dsphere`); `contracts/health/locations.*`; aud `locations` | `Locations.FunctionalTests` under `src/Services/Location`; app scenarios | `eshop/locations.api:linux-latest` | _none yet_ | contracts-frozen | `docker compose ... up -d --no-build locations-api` |
 | Marketing | `src/Services/Marketing/Marketing.API` | `marketing-api` 5110:80 | `contracts/openapi/marketing.swagger.json`; event UserLocationUpdated (cons); `contracts/db/marketing.sqlschema.txt` (SQL write model) + `contracts/db/marketingdb.mongoschema.txt` (Mongo read model, empty at seed); `contracts/health/marketing.*`; aud `marketing` | `Marketing.FunctionalTests/CampaignScenarios`; app scenarios | `eshop/marketing.api:linux-latest` | _none yet_ | contracts-frozen | `docker compose ... up -d --no-build marketing-api` |
@@ -87,3 +87,43 @@ image back to the .NET image and `up -d` that one service — for example
 A Python candidate replaces a service only when the same gates pass against the
 candidate (point `gate_service.sh` at the candidate's compose service) and the
 mixed-stack event/round-trip tests from master prompt §6 are green.
+
+Catalog-specific jobs added with the Python candidate:
+
+- `catalog-python-unit`: ruff lint plus the pytest suite under
+  `src/python/catalog_api/tests` (HTTP functional oracle port, gRPC parity,
+  event-golden serialization, outbox atomicity, duplicate-delivery idempotency,
+  OpenAPI golden equality, health golden shape, proto-freeze checksum).
+- `catalog-python-contract-gate`: runs the existing `gate_service.sh catalog`
+  with `EXTRA_COMPOSE_FILE=docker-compose-catalog-python.override.yml`, so the
+  Python container is held to the same frozen OpenAPI/health/DB-schema gates as
+  the .NET service.
+
+## Catalog cutover runbook (Python candidate)
+
+The Python implementation lives in `src/python/catalog_api` and reuses
+`src/python/eshop_common`. Same compose service name (`catalog-api`), ports
+(5101:80 HTTP, 9101:81 gRPC), environment variables, database, and event
+contracts.
+
+Shadow deploy (build + run the Python candidate in the full stack):
+
+```
+cd src
+docker compose -f docker-compose.yml -f docker-compose.override.yml \
+  -f docker-compose-catalog-python.override.yml build catalog-api
+docker compose -f docker-compose.yml -f docker-compose.override.yml \
+  -f docker-compose-catalog-python.override.yml up -d
+```
+
+The Python service runs against the database created/seeded by the .NET
+migrations without destructive changes (it only creates the schema when the
+database is empty, mirroring the EF migrations).
+
+Cutover = the same `up -d` layered command (the override swaps only the
+`catalog-api` image). One-step rollback to .NET:
+
+```
+cd src
+docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --no-build catalog-api
+```

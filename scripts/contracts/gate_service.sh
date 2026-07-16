@@ -6,6 +6,10 @@
 # Usage: gate_service.sh <service> [report_dir]
 #   service ∈ basket catalog identity locations marketing ordering
 #             ordering-signalrhub payment webhooks
+#
+# Set EXTRA_COMPOSE_FILE to layer an additional compose file (e.g.
+# docker-compose-catalog-python.override.yml) to gate a migrated candidate
+# implementation against the same frozen contracts.
 set -euo pipefail
 
 SERVICE="$1"
@@ -43,11 +47,13 @@ done
 [ -n "$PORT" ] || { echo "unknown service: $SERVICE"; exit 2; }
 
 cd "$REPO_ROOT/src"
+COMPOSE_FILES=(-f docker-compose.yml -f docker-compose.override.yml)
+[ -n "${EXTRA_COMPOSE_FILE:-}" ] && COMPOSE_FILES+=(-f "$EXTRA_COMPOSE_FILE")
 # shellcheck disable=SC2086
-docker compose -f docker-compose.yml -f docker-compose.override.yml build \
+docker compose "${COMPOSE_FILES[@]}" build \
   "${COMPOSE_NAME[$SERVICE]}" ${DEPS[$SERVICE]}
 # shellcheck disable=SC2086
-docker compose -f docker-compose.yml -f docker-compose.override.yml up -d \
+docker compose "${COMPOSE_FILES[@]}" up -d \
   "${COMPOSE_NAME[$SERVICE]}" ${DEPS[$SERVICE]}
 
 echo "Waiting for $SERVICE to report healthy on port $PORT..."
@@ -59,7 +65,7 @@ for _ in $(seq 1 90); do
 done
 if [ "$healthy" != "1" ]; then
   echo "$SERVICE never became healthy"
-  docker compose -f docker-compose.yml -f docker-compose.override.yml logs "${COMPOSE_NAME[$SERVICE]}" | tail -100
+  docker compose "${COMPOSE_FILES[@]}" logs "${COMPOSE_NAME[$SERVICE]}" | tail -100
   exit 1
 fi
 
