@@ -154,7 +154,11 @@ async def items_with_name(request: Request, name: str) -> Response:
     condition = CatalogItem.Name.startswith(name, autoescape=True)
     total = (await session.execute(select(func.count()).select_from(CatalogItem).where(condition))).scalar_one()
     rows = (
-        await session.execute(select(CatalogItem).where(condition).offset(page_size * page_index).limit(page_size))
+        await session.execute(
+            # MSSQL requires ORDER BY with OFFSET; EF Core's unordered Skip/Take
+            # returns clustered-index (Id) order, so mirror that explicitly.
+            select(CatalogItem).where(condition).order_by(CatalogItem.Id).offset(page_size * page_index).limit(page_size)
+        )
     ).scalars().all()
     return json_response(paginated_payload(page_index, page_size, total, _fill(list(rows), settings)))
 
@@ -210,7 +214,9 @@ async def _filtered_items(request: Request, type_id: int | None, brand_id: int |
         count_query = count_query.where(CatalogItem.CatalogBrandId == brand_id)
 
     total = (await session.execute(count_query)).scalar_one()
-    rows = (await session.execute(query.offset(page_size * page_index).limit(page_size))).scalars().all()
+    rows = (
+        await session.execute(query.order_by(CatalogItem.Id).offset(page_size * page_index).limit(page_size))
+    ).scalars().all()
     return json_response(paginated_payload(page_index, page_size, total, _fill(list(rows), settings)))
 
 
