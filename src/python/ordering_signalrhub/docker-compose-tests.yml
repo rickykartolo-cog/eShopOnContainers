@@ -1,0 +1,19 @@
+version: '3.4'
+
+# Test harness for ordering_signalrhub using the SAME broker image as the
+# existing test topology (src/docker-compose-tests.yml). Run from this
+# directory with:
+#   docker compose -f docker-compose-tests.yml up --build --abort-on-container-exit --exit-code-from ordering-signalrhub-tests
+
+services:
+  rabbitmq-test:
+    image: rabbitmq:3-management-alpine
+
+  ordering-signalrhub-tests:
+    build:
+      context: ../../..
+      dockerfile: src/python/ordering_signalrhub/Dockerfile.tests
+    environment:
+      - TEST_RABBITMQ_HOST=rabbitmq-test
+    depends_on:
+      - rabbitmq-test

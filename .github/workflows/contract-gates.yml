@@ -64,3 +64,31 @@ jobs:
           name: contract-reports-${{ matrix.service }}
           path: contract-reports/${{ matrix.service }}
           if-no-files-found: ignore
+
+  signalrhub-realtime:
+    name: ordering-signalrhub realtime (Python + RabbitMQ)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run unit + mixed-stack realtime tests
+        working-directory: src/python/ordering_signalrhub
+        run: |
+          docker compose -f docker-compose-tests.yml up --build \
+            --abort-on-container-exit --exit-code-from ordering-signalrhub-tests
+
+  webspa-client:
+    name: WebSPA Jest (Socket.IO client)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install and test
+        working-directory: src/Web/WebSPA
+        run: |
+          npm ci
+          npx jest --ci

@@ -1,0 +1,18 @@
+# Test image (build context = repository root so the frozen contracts/events
+# goldens are available to the parity tests).
+FROM python:3.12.11-slim-bookworm
+
+WORKDIR /src
+COPY src/python/eshop_common /src/eshop_common
+COPY src/python/ordering_signalrhub /src/ordering_signalrhub
+COPY contracts/events /src/contracts/events
+RUN pip install --no-cache-dir /src/eshop_common "/src/ordering_signalrhub[dev]"
+
+ENV CONTRACTS_EVENTS_DIR=/src/contracts/events
+WORKDIR /src/ordering_signalrhub
+
+CMD ["sh", "-c", "\
+    for i in $(seq 1 60); do \
+      python -c \"import socket,os;socket.create_connection((os.environ['TEST_RABBITMQ_HOST'],5672),timeout=3)\" 2>/dev/null && break; \
+      echo 'waiting for rabbitmq...'; sleep 2; \
+    done && pytest tests -v"]

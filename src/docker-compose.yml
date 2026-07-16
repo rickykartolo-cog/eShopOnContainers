@@ -135,10 +135,13 @@ services:
       - basket-api
 
   ordering-signalrhub:
+    # Python (Socket.IO) replacement. Rollback: rebuild with the retained .NET
+    # Dockerfile (Services/Ordering/Ordering.SignalrHub/Dockerfile) AND revert
+    # the WebSPA Socket.IO client in the same step — see docs/migration-ledger.md.
     image: ${REGISTRY:-eshop}/ordering.signalrhub:${PLATFORM:-linux}-${TAG:-latest}
     build:
       context: .
-      dockerfile: Services/Ordering/Ordering.SignalrHub/Dockerfile
+      dockerfile: python/ordering_signalrhub/Dockerfile
     depends_on:
       - nosqldata
       - sqldata
