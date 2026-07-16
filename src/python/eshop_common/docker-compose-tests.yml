@@ -1,0 +1,38 @@
+version: '3.4'
+
+# Test harness for eshop_common using the SAME dependency images as the
+# existing test topology (src/docker-compose-tests.yml). Run with:
+#   docker compose -f docker-compose-tests.yml up --build --abort-on-container-exit --exit-code-from eshop-common-tests
+
+services:
+  sqldata-test:
+    image: mcr.microsoft.com/mssql/server:2017-latest
+    environment:
+      - SA_PASSWORD=Pass@word
+      - ACCEPT_EULA=Y
+
+  nosqldata-test:
+    image: mongo
+
+  basketdata-test:
+    image: redis:alpine
+
+  rabbitmq-test:
+    image: rabbitmq:3-management-alpine
+
+  eshop-common-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.tests
+    environment:
+      - TEST_SQL_HOST=sqldata-test
+      - TEST_SQL_PORT=1433
+      - TEST_SQL_PASSWORD=Pass@word
+      - TEST_RABBITMQ_HOST=rabbitmq-test
+      - TEST_REDIS_URL=redis://basketdata-test:6379/0
+      - TEST_MONGO_URL=mongodb://nosqldata-test:27017
+    depends_on:
+      - sqldata-test
+      - nosqldata-test
+      - basketdata-test
+      - rabbitmq-test

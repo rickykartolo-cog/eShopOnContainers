@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OrderStockRejectedIntegrationEvent",
+  "description": "Frozen contract for OrderStockRejectedIntegrationEvent. RabbitMQ routing key: OrderStockRejectedIntegrationEvent (exchange eshop_event_bus); Azure Service Bus label: OrderStockRejected.",
+  "type": "object",
+  "properties": {
+    "OrderId": {
+      "type": "integer"
+    },
+    "OrderStockItems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ProductId": {
+            "type": "integer"
+          },
+          "HasStock": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ProductId",
+          "HasStock"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "Id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "CreationDate": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "OrderId",
+    "OrderStockItems",
+    "Id",
+    "CreationDate"
+  ],
+  "additionalProperties": false
+}

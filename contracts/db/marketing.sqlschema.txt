@@ -1,0 +1,31 @@
+== COLUMNS ==
+dbo.__EFMigrationsHistory|MigrationId|nvarchar|300|0|0|0|0|
+dbo.__EFMigrationsHistory|ProductVersion|nvarchar|64|0|0|0|0|
+dbo.Campaign|Id|int|4|10|0|0|0|
+dbo.Campaign|Description|nvarchar|-1|0|0|0|0|
+dbo.Campaign|From|datetime2|8|27|7|0|0|
+dbo.Campaign|Name|nvarchar|-1|0|0|0|0|
+dbo.Campaign|PictureUri|nvarchar|-1|0|0|0|0|
+dbo.Campaign|To|datetime2|8|27|7|0|0|
+dbo.Campaign|DetailsUri|nvarchar|-1|0|0|1|0|
+dbo.Campaign|PictureName|nvarchar|-1|0|0|1|0|
+dbo.Rule|Id|int|4|10|0|0|0|
+dbo.Rule|CampaignId|int|4|10|0|0|0|
+dbo.Rule|Description|nvarchar|-1|0|0|0|0|
+dbo.Rule|RuleTypeId|int|4|10|0|0|0|
+dbo.Rule|LocationId|int|4|10|0|1|0|
+== PRIMARY KEYS AND UNIQUE CONSTRAINTS ==
+dbo.__EFMigrationsHistory|PK___EFMigrationsHistory|PRIMARY_KEY_CONSTRAINT|MigrationId|1
+dbo.Campaign|PK_Campaign|PRIMARY_KEY_CONSTRAINT|Id|1
+dbo.Rule|PK_Rule|PRIMARY_KEY_CONSTRAINT|Id|1
+== INDEXES ==
+dbo.__EFMigrationsHistory|PK___EFMigrationsHistory|CLUSTERED|1|MigrationId|1|0
+dbo.Campaign|PK_Campaign|CLUSTERED|1|Id|1|0
+dbo.Rule|IX_Rule_CampaignId|NONCLUSTERED|0|CampaignId|1|0
+dbo.Rule|PK_Rule|CLUSTERED|1|Id|1|0
+== FOREIGN KEYS ==
+FK_Rule_Campaign_CampaignId|dbo.Rule|CampaignId|dbo.Campaign|Id|CASCADE|NO_ACTION
+== CHECK AND DEFAULT CONSTRAINTS ==
+== SEQUENCES (incl. HiLo) ==
+dbo.campaign_hilo|1|10|-9223372036854775808|0|bigint
+dbo.rule_hilo|1|10|-9223372036854775808|0|bigint

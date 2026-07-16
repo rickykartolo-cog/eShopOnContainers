@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UserCheckoutAcceptedIntegrationEvent",
+  "description": "Frozen contract for UserCheckoutAcceptedIntegrationEvent. RabbitMQ routing key: UserCheckoutAcceptedIntegrationEvent (exchange eshop_event_bus); Azure Service Bus label: UserCheckoutAccepted.",
+  "type": "object",
+  "properties": {
+    "UserId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "UserName": {
+      "type": "string"
+    },
+    "OrderNumber": {
+      "type": "integer"
+    },
+    "City": {
+      "type": "string"
+    },
+    "Street": {
+      "type": "string"
+    },
+    "State": {
+      "type": "string"
+    },
+    "Country": {
+      "type": "string"
+    },
+    "ZipCode": {
+      "type": "string"
+    },
+    "CardNumber": {
+      "type": "string"
+    },
+    "CardHolderName": {
+      "type": "string"
+    },
+    "CardExpiration": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "CardSecurityNumber": {
+      "type": "string"
+    },
+    "CardTypeId": {
+      "type": "integer"
+    },
+    "Buyer": {
+      "type": "string"
+    },
+    "RequestId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "Basket": {
+      "type": "object",
+      "properties": {
+        "BuyerId": {
+          "type": "string"
+        },
+        "Items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "Id": {
+                "type": "string"
+              },
+              "ProductId": {
+                "type": "integer"
+              },
+              "ProductName": {
+                "type": "string"
+              },
+              "UnitPrice": {
+                "type": "number"
+              },
+              "OldUnitPrice": {
+                "type": "number"
+              },
+              "Quantity": {
+                "type": "integer"
+              },
+              "PictureUrl": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "Id",
+              "ProductId",
+              "ProductName",
+              "UnitPrice",
+              "OldUnitPrice",
+              "Quantity",
+              "PictureUrl"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "BuyerId",
+        "Items"
+      ],
+      "additionalProperties": false
+    },
+    "Id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "CreationDate": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "UserId",
+    "UserName",
+    "OrderNumber",
+    "City",
+    "Street",
+    "State",
+    "Country",
+    "ZipCode",
+    "CardNumber",
+    "CardHolderName",
+    "CardExpiration",
+    "CardSecurityNumber",
+    "CardTypeId",
+    "Buyer",
+    "RequestId",
+    "Basket",
+    "Id",
+    "CreationDate"
+  ],
+  "additionalProperties": false
+}
