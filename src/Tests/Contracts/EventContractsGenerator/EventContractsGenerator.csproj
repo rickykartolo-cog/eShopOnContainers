@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <RootNamespace>EventContractsGenerator</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Producer-side integration event sources, compiled verbatim so golden JSON
+         is produced by the exact classes each .NET producer serializes. -->
+    <Compile Include="..\..\..\Services\Catalog\Catalog.API\IntegrationEvents\Events\ProductPriceChangedIntegrationEvent.cs" Link="Catalog\ProductPriceChangedIntegrationEvent.cs" />
+    <Compile Include="..\..\..\Services\Catalog\Catalog.API\IntegrationEvents\Events\OrderStockConfirmedIntegrationEvent.cs" Link="Catalog\OrderStockConfirmedIntegrationEvent.cs" />
+    <Compile Include="..\..\..\Services\Catalog\Catalog.API\IntegrationEvents\Events\OrderStockRejectedIntegrationEvent.cs" Link="Catalog\OrderStockRejectedIntegrationEvent.cs" />
+    <Compile Include="..\..\..\Services\Basket\Basket.API\IntegrationEvents\Events\UserCheckoutAcceptedIntegrationEvent.cs" Link="Basket\UserCheckoutAcceptedIntegrationEvent.cs" />
+    <Compile Include="..\..\..\Services\Basket\Basket.API\Model\CustomerBasket.cs" Link="Basket\CustomerBasket.cs" />
+    <Compile Include="..\..\..\Services\Basket\Basket.API\Model\BasketItem.cs" Link="Basket\BasketItem.cs" />
+    <Compile Include="..\..\..\Services\Ordering\Ordering.API\Application\IntegrationEvents\Events\OrderStartedIntegrationEvent.cs" Link="Ordering\OrderStartedIntegrationEvent.cs" />
+    <Compile Include="..\..\..\Services\Ordering\Ordering.API\Application\IntegrationEvents\Events\OrderStatusChangedTosubmittedIntegrationEvent.cs" Link="Ordering\OrderStatusChangedTosubmittedIntegrationEvent.cs" />
+    <Compile Include="..\..\..\Services\Ordering\Ordering.API\Application\IntegrationEvents\Events\OrderStatusChangedToAwaitingValidationIntegrationEvent.cs" Link="Ordering\OrderStatusChangedToAwaitingValidationIntegrationEvent.cs" />
+    <Compile Include="..\..\..\Services\Ordering\Ordering.API\Application\IntegrationEvents\Events\OrderStatusChangedToStockConfirmedIntegrationEvent.cs" Link="Ordering\OrderStatusChangedToStockConfirmedIntegrationEvent.cs" />
+    <Compile Include="..\..\..\Services\Ordering\Ordering.API\Application\IntegrationEvents\Events\OrderStatusChangedToPaidIntegrationEvent.cs" Link="Ordering\OrderStatusChangedToPaidIntegrationEvent.cs" />
+    <Compile Include="..\..\..\Services\Ordering\Ordering.API\Application\IntegrationEvents\Events\OrderStatusChangedToShippedIntegrationEvent.cs" Link="Ordering\OrderStatusChangedToShippedIntegrationEvent.cs" />
+    <Compile Include="..\..\..\Services\Ordering\Ordering.API\Application\IntegrationEvents\Events\OrderStatusChangedToCancelledIntegrationEvent.cs" Link="Ordering\OrderStatusChangedToCancelledIntegrationEvent.cs" />
+    <Compile Include="..\..\..\Services\Ordering\Ordering.BackgroundTasks\Events\GracePeriodConfirmedIntegrationEvent.cs" Link="OrderingBackgroundTasks\GracePeriodConfirmedIntegrationEvent.cs" />
+    <Compile Include="..\..\..\Services\Payment\Payment.API\IntegrationEvents\Events\OrderPaymentSucceededIntegrationEvent.cs" Link="Payment\OrderPaymentSucceededIntegrationEvent.cs" />
+    <Compile Include="..\..\..\Services\Payment\Payment.API\IntegrationEvents\Events\OrderPaymentFailedIntegrationEvent.cs" Link="Payment\OrderPaymentFailedIntegrationEvent.cs" />
+    <Compile Include="..\..\..\Services\Location\Locations.API\IntegrationEvents\Events\UserLocationUpdatedIntegrationEvent.cs" Link="Location\UserLocationUpdatedIntegrationEvent.cs" />
+    <Compile Include="..\..\..\Services\Location\Locations.API\Model\UserLocationDetails.cs" Link="Location\UserLocationDetails.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\EventBus\EventBus\EventBus.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,37 @@
+# Python replacement for Marketing.API. Build context is src/ (same as the .NET
+# image): docker build -f python/marketing_api/Dockerfile .
+# Same runtime interface: HTTP on PORT (80), /hc, /liveness.
+FROM python:3.12.8-slim-bookworm AS base
+
+# Microsoft ODBC Driver 18 for SQL Server
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl gnupg2 ca-certificates apt-transport-https unixodbc \
+    && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
+    && echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 \
+    && apt-get purge -y curl gnupg2 \
+    && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY python/eshop_common /app/eshop_common
+COPY python/marketing_api /app/marketing_api
+COPY Services/Marketing/Marketing.API/Pics /app/Pics
+
+RUN pip install --no-cache-dir /app/eshop_common /app/marketing_api
+
+# Frozen compose interface defaults (same as the .NET container/appsettings).
+ENV PORT=80 \
+    SubscriptionClientName=Marketing \
+    MongoDatabase=MarketingDb \
+    PICS_PATH=/app/Pics
+
+RUN useradd --create-home --uid 10001 appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 80
+
+CMD ["python", "-m", "marketing_api.main"]
