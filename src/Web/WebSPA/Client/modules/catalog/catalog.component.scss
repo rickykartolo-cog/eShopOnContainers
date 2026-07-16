@@ -1,3 +1,5 @@
+@use 'sass:math';
+
 @import '../variables';
 
 .esh-catalog {
@@ -12,7 +14,7 @@
 
     &-title {
         position: relative;
-        top: $banner-height / 3.5;
+        top: math.div($banner-height, 3.5);
     }
  
     $filter-height: 65px;

@@ -1,0 +1,1 @@
+{"status":"Healthy","totalDuration":"00:00:00.0003820","entries":{"self":{"data":{},"duration":"00:00:00.0000842","status":"Healthy"},"dep-data":{"data":{"key1":"value1","num":42},"description":"with data","duration":"00:00:00.0000725","status":"Healthy"}}}

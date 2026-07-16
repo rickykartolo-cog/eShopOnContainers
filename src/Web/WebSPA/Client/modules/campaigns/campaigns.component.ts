@@ -3,7 +3,7 @@ import { CampaignsService }        from './campaigns.service';
 import { ICampaign }               from '../shared/models/campaign.model';
 import { IPager }               from '../shared/models/pager.model';
 import { ConfigurationService } from '../shared/services/configuration.service';
-import { Observable } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 @Component({
@@ -61,7 +61,7 @@ export class CampaignsComponent implements OnInit {
 
     private handleError(error: any) {
         this.errorReceived = true;
-        return Observable.throw(error);
+        return throwError(() => error);
     }  
 }
 
