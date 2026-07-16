@@ -1,0 +1,1 @@
+{"status":"Healthy","totalDuration":"<duration>","entries":{"self":{"data":{},"duration":"<duration>","status":"Healthy"},"redis-check":{"data":{},"duration":"<duration>","status":"Healthy"},"basket-rabbitmqbus-check":{"data":{},"duration":"<duration>","status":"Healthy"}}}

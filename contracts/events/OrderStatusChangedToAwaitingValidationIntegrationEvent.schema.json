@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OrderStatusChangedToAwaitingValidationIntegrationEvent",
+  "description": "Frozen contract for OrderStatusChangedToAwaitingValidationIntegrationEvent. RabbitMQ routing key: OrderStatusChangedToAwaitingValidationIntegrationEvent (exchange eshop_event_bus); Azure Service Bus label: OrderStatusChangedToAwaitingValidation.",
+  "type": "object",
+  "properties": {
+    "OrderId": {
+      "type": "integer"
+    },
+    "OrderStatus": {
+      "type": "string"
+    },
+    "BuyerName": {
+      "type": "string"
+    },
+    "OrderStockItems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ProductId": {
+            "type": "integer"
+          },
+          "Units": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ProductId",
+          "Units"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "Id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "CreationDate": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "OrderId",
+    "OrderStatus",
+    "BuyerName",
+    "OrderStockItems",
+    "Id",
+    "CreationDate"
+  ],
+  "additionalProperties": false
+}
