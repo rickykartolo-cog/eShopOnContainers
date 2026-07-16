@@ -1,0 +1,24 @@
+# Swaps the ordering-api and ordering-backgroundtasks containers for the Python
+# (FastAPI) implementations while keeping the frozen compose contract: same
+# service names, ports (5102:80, 9102:81 / 5111:80), environment variables, and
+# health URLs. The .NET images remain the default in docker-compose.yml; layer
+# this file to shadow-deploy or cut over:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml \
+#     -f docker-compose-ordering-python.override.yml up -d ordering-api ordering-backgroundtasks
+#
+# Rollback (one step): re-run the same command WITHOUT this file.
+version: '3.4'
+
+services:
+  ordering-api:
+    image: ${REGISTRY:-eshop}/ordering.api.python:${PLATFORM:-linux}-${TAG:-latest}
+    build:
+      context: .
+      dockerfile: python/ordering_api/Dockerfile
+
+  ordering-backgroundtasks:
+    image: ${REGISTRY:-eshop}/ordering.backgroundtasks.python:${PLATFORM:-linux}-${TAG:-latest}
+    build:
+      context: .
+      dockerfile: python/ordering_backgroundtasks/Dockerfile
