@@ -234,7 +234,11 @@ async def item_by_id(request: Request, item_id: str) -> Response:
     )
 
 
+# ASP.NET routing is case-insensitive; WebMVC requests the camelCase form
+# (API.cs GetAllCatalogTypes/Brands), so both spellings must match. The alias
+# is hidden from the schema to keep the frozen OpenAPI document unchanged.
 @router.get("/api/v1/catalog/catalogtypes")
+@router.get("/api/v1/catalog/catalogTypes", include_in_schema=False)
 async def catalog_types(request: Request) -> Response:
     session = _session(request)
     rows = (await session.execute(select(CatalogType))).scalars().all()
@@ -242,6 +246,7 @@ async def catalog_types(request: Request) -> Response:
 
 
 @router.get("/api/v1/catalog/catalogbrands")
+@router.get("/api/v1/catalog/catalogBrands", include_in_schema=False)
 async def catalog_brands(request: Request) -> Response:
     session = _session(request)
     rows = (await session.execute(select(CatalogBrand))).scalars().all()
