@@ -55,7 +55,7 @@ image back to the .NET image and `up -d` that one service — for example
 | Catalog | `src/Services/Catalog/Catalog.API` | `catalog-api` 5101:80, 9101:81 | `contracts/openapi/catalog.swagger.json`; `contracts/proto/catalog.proto`; events: ProductPriceChanged, OrderStockConfirmed/Rejected (prod), OrderStatusChangedToAwaitingValidation/Paid (cons); `contracts/db/catalog.sqlschema.txt` (HiLo `catalog_hilo`, `catalog_brand_hilo`, `catalog_type_hilo`); `contracts/health/catalog.*`; anonymous (no JWT) | `Catalog.FunctionalTests`, `Catalog.UnitTests`; app scenarios | `eshop/catalog.api:linux-latest` | `eshop/catalog.api.python:linux-latest` (`src/python/catalog_api`, built via `src/docker-compose-catalog-python.override.yml`) | candidate-ready (Python FastAPI implementation + tests + CI gate in place; .NET image remains the default) | `docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --no-build catalog-api` |
 | Identity | `src/Services/Identity/Identity.API` | `identity-api` 5105:80 | No OpenAPI (404 by design); `contracts/db/identity.sqlschema.txt`; `contracts/health/identity.*`; clients/scopes in `contracts/auth/auth-requirements.md` | none in baseline; manual login flows + future IdP migration reconciliation tests | `eshop/identity.api:linux-latest` | External OIDC IdP (Keycloak 26.x preferred — decision locked, no Python rewrite) | contracts-frozen | `docker compose ... up -d --no-build identity-api` |
 | Location | `src/Services/Location/Locations.API` | `locations-api` 5109:80 | `contracts/openapi/locations.swagger.json`; event UserLocationUpdated (prod); `contracts/db/locationsdb.mongoschema.txt` (incl. `2dsphere`); `contracts/health/locations.*`; aud `locations` | `Locations.FunctionalTests` under `src/Services/Location`; app scenarios | `eshop/locations.api:linux-latest` | _none yet_ | contracts-frozen | `docker compose ... up -d --no-build locations-api` |
-| Marketing | `src/Services/Marketing/Marketing.API` | `marketing-api` 5110:80 | `contracts/openapi/marketing.swagger.json`; event UserLocationUpdated (cons); `contracts/db/marketing.sqlschema.txt` (SQL write model) + `contracts/db/marketingdb.mongoschema.txt` (Mongo read model, empty at seed); `contracts/health/marketing.*`; aud `marketing` | `Marketing.FunctionalTests/CampaignScenarios`; app scenarios | `eshop/marketing.api:linux-latest` | _none yet_ | contracts-frozen | `docker compose ... up -d --no-build marketing-api` |
+| Marketing | `src/Services/Marketing/Marketing.API` | `marketing-api` 5110:80 | `contracts/openapi/marketing.swagger.json`; event UserLocationUpdated (cons); `contracts/db/marketing.sqlschema.txt` (SQL write model) + `contracts/db/marketingdb.mongoschema.txt` (Mongo read model, empty at seed); `contracts/health/marketing.*`; aud `marketing` | `Marketing.FunctionalTests/CampaignScenarios`; app scenarios; `src/python/marketing_api/tests` | `eshop/marketing.api:linux-latest` | `eshop/marketing.api.python:linux-latest` (`src/python/marketing_api`, built via `src/docker-compose-marketing-python.override.yml`) | candidate-ready (Python FastAPI implementation + tests + CI gate in place; .NET image remains the default) | `docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --no-build marketing-api` |
 | Ordering.API | `src/Services/Ordering/Ordering.API` | `ordering-api` 5102:80, 9102:81 | `contracts/openapi/ordering.swagger.json`; `contracts/proto/ordering.proto`; events: OrderStarted + 6 status events (prod), UserCheckoutAccepted/GracePeriodConfirmed/OrderStockConfirmed/Rejected/OrderPaymentSucceeded/Failed (cons); `contracts/db/ordering.sqlschema.txt` (schema `ordering`, HiLo `ordering.orderseq`/`buyerseq`/`paymentseq`, dbo `orderitemseq`, owned `Address_*`); `contracts/health/ordering.*`; aud `orders` | `Ordering.FunctionalTests` (`OrderingScenarioBase`), `Ordering.UnitTests`; app scenarios | `eshop/ordering.api:linux-latest` | _none yet_ | contracts-frozen (migrate late) | `docker compose ... up -d --no-build ordering-api` |
 | Ordering.BackgroundTasks | `src/Services/Ordering/Ordering.BackgroundTasks` | `ordering-backgroundtasks` 5111:80 | event GracePeriodConfirmed (prod), golden in `contracts/events/` | none (behavioral: grace-period publication) | `eshop/ordering.backgroundtasks:linux-latest` | _none yet_ (retain until Ordering migrates) | contracts-frozen | `docker compose ... up -d --no-build ordering-backgroundtasks` |
 | Ordering.SignalrHub | `src/Services/Ordering/Ordering.SignalrHub` | `ordering-signalrhub` 5112:80 | No OpenAPI; realtime contract `/hub/notificationhub`, `UpdatedOrderState {OrderId, Status}`; consumes 6 order-status events; `contracts/health/ordering-signalrhub.*`; aud `orders.signalrhub` | none (add e2e realtime tests before protocol change) | `eshop/ordering.signalrhub:linux-latest` | _none yet_ (migrate last, gated with frontend) | contracts-frozen | `docker compose ... up -d --no-build ordering-signalrhub` |
@@ -98,6 +98,55 @@ Catalog-specific jobs added with the Python candidate:
   with `EXTRA_COMPOSE_FILE=docker-compose-catalog-python.override.yml`, so the
   Python container is held to the same frozen OpenAPI/health/DB-schema gates as
   the .NET service.
+
+Marketing-specific jobs added with the Python candidate:
+
+- `marketing-python-unit`: ruff lint plus the pytest suite under
+  `src/python/marketing_api/tests` (CampaignScenarios/user-location-rule
+  functional oracle ports, event-golden serialization + routing key,
+  consumer side-effects with duplicate-delivery idempotency, Mongo
+  collection/BSON parity, SQL schema parity, OpenAPI golden equality,
+  health golden shape).
+- `marketing-python-contract-gate`: runs the existing `gate_service.sh marketing`
+  with `EXTRA_COMPOSE_FILE=docker-compose-marketing-python.override.yml`, so the
+  Python container is held to the same frozen OpenAPI/health/DB-schema gates as
+  the .NET service.
+
+## Marketing cutover runbook (Python candidate)
+
+The Python implementation lives in `src/python/marketing_api` and reuses
+`src/python/eshop_common`. Same compose service name (`marketing-api`), port
+(5110:80), environment variables, SQL Server write model (`Campaign`/`Rule`
+with `campaign_hilo`/`rule_hilo` HiLo sequences), MongoDB read model
+(`MarketingReadDataModel`), and the consumed
+`UserLocationUpdatedIntegrationEvent` contract.
+
+Shadow deploy (build + run the Python candidate in the full stack):
+
+```
+cd src
+docker compose -f docker-compose.yml -f docker-compose.override.yml \
+  -f docker-compose-marketing-python.override.yml build marketing-api
+docker compose -f docker-compose.yml -f docker-compose.override.yml \
+  -f docker-compose-marketing-python.override.yml up -d
+```
+
+The Python service runs against the database created/seeded by the .NET
+migrations without destructive changes (it only creates the schema — including
+the `__EFMigrationsHistory` rows — when the database is empty). Known risks:
+async SQL Server access via aioodbc/ODBC 18, the SQL/Mongo split (writes vs.
+personalization reads), Mongo document compatibility (unchanged
+`MarketingReadDataModel` BSON element names), RabbitMQ at-least-once delivery
+(handler is idempotent), external-OIDC JWT validation (audience `marketing`),
+and OpenAPI golden parity (asserted in unit tests + the contract gate).
+
+Cutover = the same `up -d` layered command (the override swaps only the
+`marketing-api` image). One-step rollback to .NET (`eshop/marketing.api:linux-latest`):
+
+```
+cd src
+docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --no-build marketing-api
+```
 
 ## Catalog cutover runbook (Python candidate)
 
