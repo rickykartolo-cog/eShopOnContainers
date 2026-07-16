@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "basket-api"
+version = "0.1.0"
+description = "eShopOnContainers Basket microservice (FastAPI, contract-preserving .NET replacement)"
+requires-python = ">=3.12"
+dependencies = [
+    "eshop-common",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "structlog>=24.4",
+    "tenacity>=9.0",
+    "grpcio>=1.66",
+    "protobuf>=5.28",
+    "aio-pika>=9.4",
+    "redis>=5.1",
+    "pyjwt[crypto]>=2.9",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "fakeredis>=2.26",
+    "ruff>=0.7",
+    "mypy>=1.13",
+    "grpcio-tools>=1.66",
+]
+
+[tool.setuptools.packages.find]
+include = ["basket_api*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = [
+    "integration: tests that require live dependencies (Redis, RabbitMQ)",
+]
+
+[tool.mypy]
+python_version = "3.12"
+exclude = ["basket_api/grpc_gen"]
+
+[[tool.mypy.overrides]]
+module = ["eshop_common.*", "grpc.*", "grpc", "basket_api.grpc_gen.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["basket_api/grpc_gen"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

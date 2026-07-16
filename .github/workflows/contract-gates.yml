@@ -97,6 +97,64 @@ jobs:
             catalog-python-tests.xml
             catalog-python-tests.txt
 
+  basket-python-unit:
+    name: basket (python) lint + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e src/python/eshop_common -e 'src/python/basket_api[dev]'
+
+      - name: Lint (ruff)
+        run: ruff check src/python/basket_api
+
+      - name: Start Redis and RabbitMQ for mixed-stack tests
+        run: |
+          docker run -d -p 6379:6379 redis:alpine
+          docker run -d -p 5672:5672 rabbitmq:3-management-alpine
+          timeout 60 bash -c 'until docker run --rm --network host rabbitmq:3-management-alpine \
+            rabbitmq-diagnostics -q check_port_connectivity 2>/dev/null; do sleep 2; done' || true
+
+      - name: Unit + contract + mixed-stack tests
+        run: |
+          python -m pytest src/python/basket_api/tests -v \
+            --junitxml=basket-python-tests.xml | tee basket-python-tests.txt
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: basket-python-test-reports
+          path: |
+            basket-python-tests.xml
+            basket-python-tests.txt
+
+  basket-python-contract-gate:
+    name: contract gate (basket, python candidate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run basket contract gate against the Python implementation
+        env:
+          EXTRA_COMPOSE_FILE: docker-compose-basket-python.override.yml
+        run: bash scripts/contracts/gate_service.sh basket contract-reports/basket-python
+
+      - name: Upload human-readable diff reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-reports-basket-python
+          path: contract-reports/basket-python
+          if-no-files-found: ignore
+
   catalog-python-contract-gate:
     name: contract gate (catalog, python candidate)
     runs-on: ubuntu-latest

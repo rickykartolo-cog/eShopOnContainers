@@ -1,0 +1,17 @@
+# Swaps the basket-api container for the Python (FastAPI) implementation while
+# keeping the frozen compose contract: same service name, ports (5103:80,
+# 9103:81), environment variables, and health URLs. The .NET image remains the
+# default in docker-compose.yml; layer this file to shadow-deploy or cut over:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml \
+#     -f docker-compose-basket-python.override.yml up -d basket-api
+#
+# Rollback (one step): re-run the same command WITHOUT this file.
+version: '3.4'
+
+services:
+  basket-api:
+    image: ${REGISTRY:-eshop}/basket.api.python:${PLATFORM:-linux}-${TAG:-latest}
+    build:
+      context: .
+      dockerfile: python/basket_api/Dockerfile

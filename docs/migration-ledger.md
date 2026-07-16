@@ -51,7 +51,7 @@ image back to the .NET image and `up -d` that one service — for example
 
 | Service | Owner path | Compose name / ports | Contract snapshots | Test suites | Current image | Replacement image | Cutover status | Rollback command |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Basket | `src/Services/Basket/Basket.API` | `basket-api` 5103:80, 9103:81 | `contracts/openapi/basket.swagger.json`; `contracts/proto/basket.proto`; events: UserCheckoutAccepted (prod), ProductPriceChanged, OrderStarted (cons); `contracts/health/basket.*`; `contracts/auth` (aud `basket`) | `Basket.FunctionalTests`, `Basket.UnitTests` under `src/Services/Basket`; app scenarios in `src/Tests/Services/Application.FunctionalTests` | `eshop/basket.api:linux-latest` | _none yet_ | contracts-frozen | `docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --no-build basket-api` |
+| Basket | `src/Services/Basket/Basket.API` | `basket-api` 5103:80, 9103:81 | `contracts/openapi/basket.swagger.json`; `contracts/proto/basket.proto`; events: UserCheckoutAccepted (prod), ProductPriceChanged, OrderStarted (cons); `contracts/health/basket.*`; `contracts/auth` (aud `basket`) | `Basket.FunctionalTests`, `Basket.UnitTests` under `src/Services/Basket`; app scenarios in `src/Tests/Services/Application.FunctionalTests` | `eshop/basket.api:linux-latest` | `eshop/basket.api.python:linux-latest` (`src/python/basket_api`, built via `src/docker-compose-basket-python.override.yml`) | candidate-ready (Python FastAPI implementation + tests + CI gate in place; .NET image remains the default) | `docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --no-build basket-api` |
 | Catalog | `src/Services/Catalog/Catalog.API` | `catalog-api` 5101:80, 9101:81 | `contracts/openapi/catalog.swagger.json`; `contracts/proto/catalog.proto`; events: ProductPriceChanged, OrderStockConfirmed/Rejected (prod), OrderStatusChangedToAwaitingValidation/Paid (cons); `contracts/db/catalog.sqlschema.txt` (HiLo `catalog_hilo`, `catalog_brand_hilo`, `catalog_type_hilo`); `contracts/health/catalog.*`; anonymous (no JWT) | `Catalog.FunctionalTests`, `Catalog.UnitTests`; app scenarios | `eshop/catalog.api:linux-latest` | `eshop/catalog.api.python:linux-latest` (`src/python/catalog_api`, built via `src/docker-compose-catalog-python.override.yml`) | candidate-ready (Python FastAPI implementation + tests + CI gate in place; .NET image remains the default) | `docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --no-build catalog-api` |
 | Identity | `src/Services/Identity/Identity.API` | `identity-api` 5105:80 | No OpenAPI (404 by design); `contracts/db/identity.sqlschema.txt`; `contracts/health/identity.*`; clients/scopes in `contracts/auth/auth-requirements.md` | none in baseline; manual login flows + future IdP migration reconciliation tests | `eshop/identity.api:linux-latest` | External OIDC IdP (Keycloak 26.x preferred — decision locked, no Python rewrite) | contracts-frozen | `docker compose ... up -d --no-build identity-api` |
 | Location | `src/Services/Location/Locations.API` | `locations-api` 5109:80 | `contracts/openapi/locations.swagger.json`; event UserLocationUpdated (prod); `contracts/db/locationsdb.mongoschema.txt` (incl. `2dsphere`); `contracts/health/locations.*`; aud `locations` | `Locations.FunctionalTests` under `src/Services/Location`; app scenarios | `eshop/locations.api:linux-latest` | _none yet_ | contracts-frozen | `docker compose ... up -d --no-build locations-api` |
@@ -98,6 +98,53 @@ Catalog-specific jobs added with the Python candidate:
   with `EXTRA_COMPOSE_FILE=docker-compose-catalog-python.override.yml`, so the
   Python container is held to the same frozen OpenAPI/health/DB-schema gates as
   the .NET service.
+
+Basket-specific jobs added with the Python candidate:
+
+- `basket-python-unit`: ruff lint plus the pytest suite under
+  `src/python/basket_api/tests` (HTTP functional oracle port, gRPC parity,
+  event-golden serialization, Redis data-compatibility round-trips,
+  duplicate-delivery idempotency, checkout `x-requestid` handling, OpenAPI
+  golden equality, health golden shape, proto-freeze checksum) including the
+  mixed-stack RabbitMQ tests against a real broker.
+- `basket-python-contract-gate`: runs the existing `gate_service.sh basket`
+  with `EXTRA_COMPOSE_FILE=docker-compose-basket-python.override.yml`, so the
+  Python container is held to the same frozen OpenAPI/health gates as the
+  .NET service.
+
+## Basket cutover runbook (Python candidate)
+
+The Python implementation lives in `src/python/basket_api` and reuses
+`src/python/eshop_common`. Same compose service name (`basket-api`), ports
+(5103:80 HTTP, 9103:81 gRPC), environment variables, Redis keyspace/layout, and
+event contracts.
+
+Shadow deploy (build + run the Python candidate in the full stack):
+
+```
+cd src
+docker compose -f docker-compose.yml -f docker-compose.override.yml \
+  -f docker-compose-basket-python.override.yml build basket-api
+docker compose -f docker-compose.yml -f docker-compose.override.yml \
+  -f docker-compose-basket-python.override.yml up -d
+```
+
+The Python service reads/writes the same Redis entries as the .NET service
+(raw buyer-id keys, PascalCase Newtonsoft JSON values), so baskets survive the
+swap in either direction with no data migration.
+
+Cutover = the same `up -d` layered command (the override swaps only the
+`basket-api` image). One-step rollback to .NET:
+
+```
+cd src
+docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --no-build basket-api
+```
+
+Known risks tracked for cutover: OIDC discovery behavior against the current
+IdentityServer4 (validated live in shadow deploy, not in unit tests), and the
+`name` claim mapping for `UserName` in checkout events (unique_name → name →
+preferred_username fallback, matching the inbound-claim-type map).
 
 ## Catalog cutover runbook (Python candidate)
 
