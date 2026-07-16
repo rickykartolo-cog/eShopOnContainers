@@ -1,0 +1,4 @@
+requests>=2.32,<3
+# Only needed for export_users.py (SQL Server access); requires the
+# Microsoft ODBC Driver 18 for SQL Server on the host.
+pyodbc>=5.1,<6
