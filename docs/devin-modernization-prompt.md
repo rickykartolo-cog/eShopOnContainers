@@ -2,6 +2,8 @@
 
 You are Devin. Modernize this repository from its .NET Core 3.1/Angular 8 implementation to an incrementally deployable Python FastAPI backend and a modern Angular frontend. Work autonomously, inspect the repository before every phase, keep changes reviewable, and do not stop at a design document: implement, test, containerize, and prepare each migration slice for production cutover.
 
+**Baseline anchor:** execute this prompt against the repository's .NET Core 3.1/Angular 8 baseline on `origin/main` (verified at commit `31ab9b62b9fb02fb1c1eb7cadef285c5e6ca6731`). Do not execute it against the divergent `dev` line, whose newer tree no longer contains all services and contracts covered here. If `origin/main` has moved, locate the equivalent revision and prove the inventory below before changing code.
+
 Two decisions are already made and are not open for reconsideration:
 
 1. **Frontend: Option A — modernize the existing Angular application in place. Do not rewrite it in React.**
@@ -115,9 +117,10 @@ The test topology uses SQL Server 2017, MongoDB, Redis, and RabbitMQ. The develo
 - Integration events derive from a base carrying `Id` as a GUID and `CreationDate` as a UTC timestamp.
 - RabbitMQ uses the direct exchange `eshop_event_bus`.
 - The RabbitMQ routing key is the integration-event class name.
+- Azure Service Bus uses the event class name without the trailing `IntegrationEvent` suffix as the message Label/Subject and subscription correlation-filter value.
 - Messages are serialized with Newtonsoft.Json and published as persistent messages.
 - The EF integration-event log implements a transactional outbox with states `NotPublished`, `InProgress`, `Published`, and `PublishedFailed`.
-- Consumers must tolerate at-least-once delivery and deduplicate side effects by event `Id`.
+- Consumers must tolerate at-least-once delivery. The reference primarily relies on naturally idempotent operations, monotonic aggregate transitions, and command-level `x-requestid` handling rather than a general event-`Id` inbox.
 - BFFs and `WebStatus` poll `/hc`.
 - `/liveness` is a self-only check.
 - `/hc` must retain the exact JSON shape emitted by `UIResponseWriter.WriteHealthCheckUIResponse`; capture a golden response rather than approximating it.
@@ -163,6 +166,7 @@ Implement and test:
 2. **Event bus**
    - Provide RabbitMQ and Azure Service Bus adapters behind one typed interface.
    - For RabbitMQ, publish to direct exchange `eshop_event_bus` with `routing_key = event class name`.
+   - For Azure Service Bus, set the message Label/Subject to the class name with the trailing `IntegrationEvent` suffix removed, create per-event subscription rules with a correlation filter on that value, and re-append `IntegrationEvent` when resolving the .NET-compatible event type on receipt.
    - Match Newtonsoft.Json output, including property casing, GUID text, decimal/number representation, null handling, array/object layout, and UTC `CreationDate`.
    - Include the base `Id` and `CreationDate` exactly.
    - Mark RabbitMQ messages persistent.
@@ -172,7 +176,7 @@ Implement and test:
    - Write domain data and the outbox entry in the same SQL transaction.
    - Preserve the existing `IntegrationEventLog` schema and lifecycle where sharing an existing database.
    - Publish asynchronously and track attempts/failures.
-   - Make consumers idempotent by event `Id`.
+   - Make duplicate delivery produce no additional side effects. Preserve natural/aggregate and `x-requestid` idempotency, and add an event-`Id` inbox/deduplication mechanism where necessary without changing the external event contract.
 
 4. **Health checks**
    - Serve `/liveness` with self checks only.
@@ -293,8 +297,7 @@ Preserve SQL Server details:
 
 - schema `ordering`;
 - tables including `orders`, `orderItems`, `buyers`, `cardtypes`, `orderstatus`, `paymentmethods`, and `requests`;
-- HiLo sequence `ordering.orderseq`;
-- sequences `buyerseq`, `orderitemseq`, and `paymentseq` with their existing schema and increments;
+- HiLo sequences `ordering.orderseq`, `ordering.buyerseq`, `ordering.paymentseq`, and `orderitemseq` in the default/`dbo` schema, with their existing increments;
 - owned `Address` columns on `orders`, including names such as `Address_City`, `Address_Country`, `Address_State`, `Address_Street`, and `Address_ZipCode`;
 - private/field-backed mappings, required properties, lengths, precision, indexes, foreign keys, and delete behavior;
 - existing seed values and compatibility with rows written by .NET.
@@ -357,6 +360,8 @@ Modernize the browser client from implicit flow to Authorization Code plus PKCE 
 
 All protected .NET and Python services must validate tokens from the external IdP's `Authority`/OIDC discovery URL during the mixed-stack period. Configure audience mapping so tokens remain accepted by existing `AddJwtBearer` consumers until each consumer is migrated.
 
+Keep IdentityServer4 issuing tokens for browser/MVC clients until those clients can authenticate against the external IdP, or move the SPA Authorization Code plus PKCE conversion into the IdP cutover slice. Browser login must remain operational at every intermediate step; do not stand up an external IdP that rejects the still-active implicit SPA flow and defer the SPA conversion until later.
+
 Implement staged user migration with export validation, dry runs, reconciliation counts, rollback, secure forced-reset handling where hashes cannot be imported, and no plaintext-password handling.
 
 ### 4.6 Marketing and Location
@@ -365,14 +370,14 @@ Do not inaccurately model all Marketing persistence as MongoDB:
 
 - Marketing's write model uses SQL Server EF Core for `Campaign`, `Rule`, and `UserLocationRule`.
 - Marketing's read/personalization model uses MongoDB, including the `MarketingReadDataModel` collection.
-- Marketing also uses Azure Blob Storage for campaign images.
+- Marketing optionally uses Azure Blob Storage for campaign images when `AzureStorageEnabled` is enabled; otherwise it serves images from the service's local web root.
 - Location is MongoDB-backed, including `UserLocation` and `Locations` collections and geospatial behavior.
 
 For Marketing:
 
 - Port SQL persistence with SQLAlchemy/Alembic and ODBC while preserving the relational schema.
 - Port Mongo read/personalization persistence with `motor`/`pymongo`, optionally Beanie.
-- Preserve audience `marketing`, authorization, campaign/rule behavior, image behavior, and all existing `api/v1/campaigns` routes for listing, get-by-id, create, update, delete, user campaigns, campaign locations/rules, and pictures.
+- Preserve audience `marketing`, authorization, campaign/rule behavior, the `AzureStorageEnabled` image-storage toggle, local-image fallback, and all existing `api/v1/campaigns` routes for listing, get-by-id, create, update, delete, user campaigns, campaign locations/rules, and `GET api/v1/campaigns/{campaignId:int}/pic`.
 - Port `Marketing.FunctionalTests/CampaignScenarios`, user-location-rule scenarios, and application functional tests.
 
 For Location:
@@ -475,7 +480,8 @@ Hosting requirements:
 - Build static assets and serve them through an nginx container.
 - Preserve SPA fallback routing to `index.html` for non-API client routes.
 - Update Compose while retaining service name `webspa` and external port `5104`.
-- Preserve runtime configuration for `IdentityUrl`, `PurchaseUrl`, `MarketingUrl`, `SignalrHubUrl`, `IdentityUrlHC`, and any health URLs. Generate a runtime JSON or JavaScript configuration at container startup rather than compiling environment-specific URLs into the bundle.
+- The current SPA loads browser configuration from the .NET `Home/Configuration` endpoint. When nginx replaces that host, generate a static runtime file such as `/assets/config.json`, update `ConfigurationService` to fetch it, and preserve the browser-facing camelCase keys `identityUrl`, `marketingUrl`, `purchaseUrl`, `signalrHubUrl`, and `activateCampaignDetailFunction`.
+- Preserve container environment variables such as `IdentityUrl`, `PurchaseUrl`, `MarketingUrl`, `SignalrHubUrl`, and server-side health URLs such as `IdentityUrlHC`, but do not expose server-only health configuration to the browser. Do not compile environment-specific URLs into the bundle.
 - Keep gateway path usage such as the purchase gateway's Catalog `/c/api/v1/catalog/...` routes.
 
 Do not remove the .NET SPA host until the nginx-hosted Angular build passes the complete browser suite and health monitoring.
@@ -500,9 +506,11 @@ Port existing functional scenarios, including:
 - `Marketing.FunctionalTests/CampaignScenarios`
 - `Ordering.FunctionalTests/OrderingScenarioBase`
 - `Catalog.FunctionalTests`
-- Basket, Location, Webhooks, and application-level functional scenarios
+- Basket, Location, and application-level functional scenarios
 
 Assert identical status codes, headers, JSON property names/casing, types, nullability, ordering where contractual, validation errors, authorization behavior, and idempotency. Cover `x-requestid` on checkout, cancel, and ship.
+
+Webhooks and Payment have no existing service functional-test projects in this baseline. Author new HTTP functional tests for them from the frozen OpenAPI, routes, and observed behavior rather than claiming to port nonexistent tests.
 
 ### 6.2 gRPC
 
@@ -553,10 +561,10 @@ For each event:
 1. Capture golden Newtonsoft.Json serialized examples, including edge cases and base `Id`/`CreationDate`.
 2. Generate and commit a JSON Schema snapshot.
 3. Assert the Python producer's semantic JSON and exact UTF-8 representation required by existing consumers.
-4. Assert the RabbitMQ routing key equals the event class name and the exchange is `eshop_event_bus`.
+4. Assert the RabbitMQ routing key equals the full event class name and the exchange is `eshop_event_bus`; assert the Azure Service Bus Label/Subject equals the class name without the trailing `IntegrationEvent` suffix.
 5. Test Python producer → .NET consumer and .NET producer → Python consumer against a real test broker.
 6. Assert domain side effects, not merely message receipt.
-7. Inject duplicate delivery and prove idempotency by `Id`.
+7. Inject duplicate delivery and prove there are no additional side effects. Verify existing natural/aggregate and `x-requestid` behavior, plus any new event-`Id` inbox used by the Python implementation.
 8. Inject publish failure and prove the outbox retains/retries the event.
 9. Prove the database mutation and outbox insert are atomic.
 
@@ -581,7 +589,7 @@ Explicitly test:
 
 - Catalog HiLo sequences and relationships.
 - Ordering schema `ordering`.
-- `ordering.orderseq` and the other Ordering sequences.
+- `ordering.orderseq`, `ordering.buyerseq`, `ordering.paymentseq`, and default/`dbo` `orderitemseq`.
 - owned `Address` columns on `ordering.orders`.
 - request/idempotency storage.
 - integration-event log/outbox compatibility.
