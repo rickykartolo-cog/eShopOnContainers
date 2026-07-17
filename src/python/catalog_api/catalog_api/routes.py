@@ -157,7 +157,11 @@ async def items_with_name(request: Request, name: str) -> Response:
         await session.execute(
             # MSSQL requires ORDER BY with OFFSET; EF Core's unordered Skip/Take
             # returns clustered-index (Id) order, so mirror that explicitly.
-            select(CatalogItem).where(condition).order_by(CatalogItem.Id).offset(page_size * page_index).limit(page_size)
+            select(CatalogItem)
+            .where(condition)
+            .order_by(CatalogItem.Id)
+            .offset(page_size * page_index)
+            .limit(page_size)
         )
     ).scalars().all()
     return json_response(paginated_payload(page_index, page_size, total, _fill(list(rows), settings)))
