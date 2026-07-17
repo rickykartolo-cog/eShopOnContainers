@@ -1,0 +1,47 @@
+== COLUMNS ==
+dbo.__EFMigrationsHistory|MigrationId|nvarchar|300|0|0|0|0|
+dbo.__EFMigrationsHistory|ProductVersion|nvarchar|64|0|0|0|0|
+dbo.Catalog|Id|int|4|10|0|0|0|
+dbo.Catalog|CatalogBrandId|int|4|10|0|0|0|
+dbo.Catalog|CatalogTypeId|int|4|10|0|0|0|
+dbo.Catalog|Description|nvarchar|-1|0|0|1|0|
+dbo.Catalog|Name|nvarchar|100|0|0|0|0|
+dbo.Catalog|PictureFileName|nvarchar|-1|0|0|1|0|
+dbo.Catalog|Price|decimal|9|18|2|0|0|
+dbo.Catalog|AvailableStock|int|4|10|0|0|0|((0))
+dbo.Catalog|MaxStockThreshold|int|4|10|0|0|0|((0))
+dbo.Catalog|OnReorder|bit|1|1|0|0|0|(CONVERT([bit],(0)))
+dbo.Catalog|RestockThreshold|int|4|10|0|0|0|((0))
+dbo.CatalogBrand|Id|int|4|10|0|0|0|
+dbo.CatalogBrand|Brand|nvarchar|200|0|0|0|0|
+dbo.CatalogType|Id|int|4|10|0|0|0|
+dbo.CatalogType|Type|nvarchar|200|0|0|0|0|
+dbo.IntegrationEventLog|EventId|uniqueidentifier|16|0|0|0|0|
+dbo.IntegrationEventLog|Content|nvarchar|-1|0|0|0|0|
+dbo.IntegrationEventLog|CreationTime|datetime2|8|27|7|0|0|
+dbo.IntegrationEventLog|EventTypeName|nvarchar|-1|0|0|0|0|
+dbo.IntegrationEventLog|State|int|4|10|0|0|0|
+dbo.IntegrationEventLog|TimesSent|int|4|10|0|0|0|
+dbo.IntegrationEventLog|TransactionId|nvarchar|-1|0|0|1|0|
+== PRIMARY KEYS AND UNIQUE CONSTRAINTS ==
+dbo.__EFMigrationsHistory|PK___EFMigrationsHistory|PRIMARY_KEY_CONSTRAINT|MigrationId|1
+dbo.Catalog|PK_Catalog|PRIMARY_KEY_CONSTRAINT|Id|1
+dbo.CatalogBrand|PK_CatalogBrand|PRIMARY_KEY_CONSTRAINT|Id|1
+dbo.CatalogType|PK_CatalogType|PRIMARY_KEY_CONSTRAINT|Id|1
+dbo.IntegrationEventLog|PK_IntegrationEventLog|PRIMARY_KEY_CONSTRAINT|EventId|1
+== INDEXES ==
+dbo.__EFMigrationsHistory|PK___EFMigrationsHistory|CLUSTERED|1|MigrationId|1|0
+dbo.Catalog|IX_Catalog_CatalogBrandId|NONCLUSTERED|0|CatalogBrandId|1|0
+dbo.Catalog|IX_Catalog_CatalogTypeId|NONCLUSTERED|0|CatalogTypeId|1|0
+dbo.Catalog|PK_Catalog|CLUSTERED|1|Id|1|0
+dbo.CatalogBrand|PK_CatalogBrand|CLUSTERED|1|Id|1|0
+dbo.CatalogType|PK_CatalogType|CLUSTERED|1|Id|1|0
+dbo.IntegrationEventLog|PK_IntegrationEventLog|CLUSTERED|1|EventId|1|0
+== FOREIGN KEYS ==
+FK_Catalog_CatalogBrand_CatalogBrandId|dbo.Catalog|CatalogBrandId|dbo.CatalogBrand|Id|CASCADE|NO_ACTION
+FK_Catalog_CatalogType_CatalogTypeId|dbo.Catalog|CatalogTypeId|dbo.CatalogType|Id|CASCADE|NO_ACTION
+== CHECK AND DEFAULT CONSTRAINTS ==
+== SEQUENCES (incl. HiLo) ==
+dbo.catalog_brand_hilo|1|10|-9223372036854775808|0|bigint
+dbo.catalog_hilo|1|10|-9223372036854775808|0|bigint
+dbo.catalog_type_hilo|1|10|-9223372036854775808|0|bigint
